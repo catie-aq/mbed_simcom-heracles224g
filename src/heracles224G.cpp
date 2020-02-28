@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "heracles_224g/heracles_224g.h"
+#include "heracles224G/heracles224G.h"
 
 namespace sixtron {
 
