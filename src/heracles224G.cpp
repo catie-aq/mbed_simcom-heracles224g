@@ -19,7 +19,7 @@
 
 namespace sixtron {
 
-heracles-224G::heracles-224G()
+heracles224G::heracles224G()
 {
 }
 
