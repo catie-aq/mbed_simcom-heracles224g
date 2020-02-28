@@ -19,10 +19,10 @@
 
 namespace sixtron {
 
-class heracles-224G
+class heracles224G
 {
 public:
-    heracles-224G();
+    heracles224G();
 };
 
 } // namespace sixtron
