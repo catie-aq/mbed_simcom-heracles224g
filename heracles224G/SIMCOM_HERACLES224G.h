@@ -29,7 +29,7 @@
 
 #include "mbed.h"
 #include "DigitalOut.h"
-#include "AT_CellularDevice.h"
+#include <AT_CellularDevice.h>
 
 namespace mbed {
 
@@ -42,13 +42,13 @@ public:
     SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr, bool active_high);
 
 protected: // AT_CellularDevice
-    virtual AT_CellularContext *create_context_impl(ATHandler &at, const char *apn, bool cp_req = false, bool nonip_req = false);
     virtual nsapi_error_t init();
     virtual nsapi_error_t hard_power_on();
     virtual nsapi_error_t hard_power_off();
     virtual nsapi_error_t soft_power_on();
     virtual nsapi_error_t soft_power_off();
     virtual AT_CellularNetwork *open_network_impl(ATHandler &at);
+    virtual AT_CellularContext *create_context_impl(ATHandler &at, const char *apn, bool cp_req = false, bool nonip_req = false);
 
 private:
     bool _active_high;
