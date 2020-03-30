@@ -14,12 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include "mbed.h"
+
+#include <AT_CellularNetwork.h>
 #include "SIMCOM_HERACLES224G.h"
 #include "SIMCOM_HERACLES224G_CellularContext.h"
 #include "SIMCOM_HERACLES224G_CellularNetwork.h"
-#include "AT_CellularNetwork.h"
-#include "PinNames.h"
-#include "rtos/ThisThread.h"
 
 using namespace mbed;
 using namespace rtos;
@@ -54,14 +55,14 @@ static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
     1,  // AT_CSDH
     1,  // PROPERTY_IPV4_STACK
     1,  // PROPERTY_IPV6_STACK
-    1,  // PROPERTY_IPV4V6_STACK
-    0,  // PROPERTY_NON_IP_PDP_TYPE
-    1,  // PROPERTY_AT_CGEREP
+    0,  // PROPERTY_IPV4V6_STACK
+    1,  // PROPERTY_NON_IP_PDP_TYPE
+    1,  // PROPERTY_AT_CGEREP,
     1,  // PROPERTY_AT_COPS_FALLBACK_AUTO
-    0,  // PROPERTY_SOCKET_COUNT
-    0,  // PROPERTY_IP_TCP
-    0,  // PROPERTY_IP_UDP
-    20, // PROPERTY_AT_SEND_DELAY
+    12, // PROPERTY_SOCKET_COUNT
+    1,  // PROPERTY_IP_TCP
+    1,  // PROPERTY_IP_UDP
+    20,  // PROPERTY_AT_SEND_DELAY
 };
 
 SIMCOM_HERACLES224G::SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr, bool active_high)
@@ -72,11 +73,6 @@ SIMCOM_HERACLES224G::SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr, bool activ
     set_cellular_properties(cellular_properties);
 }
 
-AT_CellularContext *SIMCOM_HERACLES224G::create_context_impl(ATHandler &at, const char *apn, bool cp_req, bool nonip_req)
-{
-    return new SIMCOM_HERACLES224G_CellularContext(at, this, apn, cp_req, nonip_req);
-}
-
 nsapi_error_t SIMCOM_HERACLES224G::init()
 {
     nsapi_error_t err = AT_CellularDevice::init();
@@ -84,18 +80,6 @@ nsapi_error_t SIMCOM_HERACLES224G::init()
         return err;
     }
     _at.lock();
-//#if defined (MBED_CONF_SIMCOM_HERACLES224G_RTS) && defined (MBED_CONF_SIMCOM_HERACLES224G_CTS)
-//    _at.at_cmd_discard("&K3;&C1;&D0", "");
-//#else
-//    _at.at_cmd_discard("&K0;&C1;&D0", "");
-//#endif
-    // AT+CMER=2
-    // Set command enables sending of unsolicited result codes from TA to TE in the case of
-    // indicator state changes.
-    // Current setting: buffer +CIEV Unsolicited Result Codes in the TA when TA-TE link is
-    // reserved (e.g. on-line data mode) and flush them to the TE after
-    // reservation; otherwise forward them directly to the TE
-    _at.at_cmd_discard("+CMER", "=2");
 
     // AT+CMEE=2
     // Set command disables the use of result code +CME ERROR: <err> as an indication of an
@@ -159,4 +143,9 @@ nsapi_error_t SIMCOM_HERACLES224G::soft_power_off()
 AT_CellularNetwork *SIMCOM_HERACLES224G::open_network_impl(ATHandler &at)
 {
     return new SIMCOM_HERACLES224G_CellularNetwork(at, *this);
+}
+
+AT_CellularContext *SIMCOM_HERACLES224G::create_context_impl(ATHandler &at, const char *apn, bool cp_req, bool nonip_req)
+{
+    return new SIMCOM_HERACLES224G_CellularContext(at, this, apn, cp_req, nonip_req);
 }
