@@ -31,10 +31,10 @@ SIMCOM_HERACLES224G_CellularStack::SIMCOM_HERACLES224G_CellularStack(ATHandler &
 	_tcpip_mode = SINGLE_TCP;
 	_data_transmitting_mode = NORMAL;
 //    _at.set_urc_handler("+CIPSEND: ", mbed::Callback<void()>(this, &SIMCOM_HERACLES224G_CellularStack::urc_qiurc_recv));
-
     _at.clear_error();
 }
 
+<<<<<<< HEAD
 SIMCOM_HERACLES224G_CellularStack::~SIMCOM_HERACLES224G_CellularStack() // @suppress("Member declaration not found")
 {
 }
@@ -63,6 +63,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
     int modem_connect_id = -1;
     int err = NSAPI_ERROR_NO_CONNECTION;
 
+<<<<<<< HEAD
     // assert here as its a programming error if the socket container doesn't contain
     // specified handle
     int request_connect_id = find_socket_index(socket);
@@ -288,6 +289,7 @@ void SIMCOM_HERACLES224G_CellularStack::urc_qiurc(urc_type_t urc_type)
     }
 }
 
+<<<<<<< HEAD
 
 
 
@@ -323,6 +325,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close_impl(int sock_id)
 
 void SIMCOM_HERACLES224G_CellularStack::handle_open_socket_response(int &modem_connect_id, int &err, bool tlssocket)
 {
+
 	nsapi_error_t error;
     // OK
     // CIPSTART -> should be handled as URC?
@@ -461,7 +464,6 @@ nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_sendto_impl(Cell
     int sent_len_before = 0;
     int sent_len_after = 0;
 
-
     if (_tcpip_mode == SINGLE_TCP) {
     	// Send
 		_at.cmd_start_stop("+CIPSEND", "=", "%d", size);
@@ -506,13 +508,11 @@ nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_recvfrom_impl(Ce
         // do not read more than max size
         size = size > HERACLES224G_MAX_RECV_SIZE ? HERACLES224G_MAX_RECV_SIZE : size;
 		_at.cmd_start_stop("+QIRD", "=", "%d%d", socket->id, size);
-
     } else {
         _at.cmd_start_stop("+QIRD", "=", "%d", socket->id);
     }
 
 	_at.resp_start("+QIRD:");
-
 
     recv_len = _at.read_int();
     if (recv_len > 0) {
@@ -587,3 +587,4 @@ nsapi_error_t QUECTEL_BG96_CellularStack::gethostbyname(const char *host, Socket
     return _at.unlock_return_error();
 }
 #endif
+
