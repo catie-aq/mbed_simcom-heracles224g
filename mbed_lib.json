@@ -24,6 +24,14 @@
         "provide-default": {
             "help": "Provide as default CellularDevice [true/false]",
             "value": false
+        },
+        "pwr-key" : {
+            "help": "PWR key pin for power on/off module",
+            "value": null
+        },
+        "rst" : {
+            "help": "RST pin to reboot module",
+            "value": null
         }
     }
 }
