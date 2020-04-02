@@ -63,7 +63,6 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
     int modem_connect_id = -1;
     int err = NSAPI_ERROR_NO_CONNECTION;
 
-<<<<<<< HEAD
     // assert here as its a programming error if the socket container doesn't contain
     // specified handle
     int request_connect_id = find_socket_index(socket);
@@ -289,7 +288,6 @@ void SIMCOM_HERACLES224G_CellularStack::urc_qiurc(urc_type_t urc_type)
     }
 }
 
-<<<<<<< HEAD
 
 
 
@@ -334,10 +332,12 @@ void SIMCOM_HERACLES224G_CellularStack::handle_open_socket_response(int &modem_c
 	_at.resp_start("CONNECT OK");
 
     _at.restore_at_timeout();
+
     _at.resp_stop();
     _at.restore_at_timeout();
 
     err = _at.get_last_error();
+
 
 }
 
@@ -351,6 +351,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
     // assert here as its a programming error if the socket container doesn't contain
     // specified handle
     MBED_ASSERT(request_connect_id != -1);
+
 
     if (_tcpip_mode == SINGLE_TCP) {
     	// single tcpip connection mode
@@ -390,6 +391,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
 					}
 				}
 			}
+
 		}
     } else {
     	// multiple tcpip connection mode
