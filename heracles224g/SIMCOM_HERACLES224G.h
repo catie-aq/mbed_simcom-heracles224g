@@ -36,23 +36,25 @@ namespace mbed {
 class SIMCOM_HERACLES224G : public AT_CellularDevice {
 public:
     /**
-     * Constructs the Telit ME910 series driver. It is mandatory to provide
+     * Constructs the SIMCOM Heracles224G series driver. It is mandatory to provide
      * a FileHandle object, the power pin and the polarity of the pin.
      */
-    SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr, bool active_high);
+    SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key = NC, bool active_high = true, PinName rst = NC);
 
 protected: // AT_CellularDevice
     virtual nsapi_error_t init();
-    virtual nsapi_error_t hard_power_on();
-    virtual nsapi_error_t hard_power_off();
     virtual nsapi_error_t soft_power_on();
     virtual nsapi_error_t soft_power_off();
     virtual AT_CellularNetwork *open_network_impl(ATHandler &at);
     virtual AT_CellularContext *create_context_impl(ATHandler &at, const char *apn, bool cp_req = false, bool nonip_req = false);
+    virtual void set_ready_cb(Callback<void()> callback);
 
 private:
+    void press_button(DigitalOut &button, uint32_t timeout);
+    bool wake_up(bool reset = false);
     bool _active_high;
     DigitalOut _pwr_key;
+    DigitalOut _rst;
 };
 } // namespace mbed
 #endif /* CELLULAR_TARGETS_SIMCOM_HERACLES224G_SIMCOM_HERACLES224G_H_ */
