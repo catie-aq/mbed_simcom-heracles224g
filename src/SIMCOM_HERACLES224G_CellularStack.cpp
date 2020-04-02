@@ -69,50 +69,26 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
 
     _at.lock();
     if (socket->proto == NSAPI_TCP) {
-        if (socket->tls_socket) {
-            if (_tls_sec_level == 0) {
-                _at.unlock();
-                return NSAPI_ERROR_AUTH_FAILURE;
-            }
+		char ipdot[NSAPI_IP_SIZE];
+		ip2dot(address, ipdot);
+		_at.at_cmd_discard("+QIOPEN", "=", "%d%d%s%s%d%d%d", _cid, request_connect_id, "TCP",
+						   ipdot, address.get_port(), socket->localAddress.get_port(), 0);
 
-            _at.at_cmd_discard("+QSSLOPEN", "=", "%d%d%d%s%d%d", _cid, sslctxID, request_connect_id,
-                               address.get_ip_address(), address.get_port(), 0);
-            handle_open_socket_response(modem_connect_id, err, true);
+		handle_open_socket_response(modem_connect_id, err, false);
 
-            if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
-                if (err == HERACLES224G_SOCKET_BIND_FAIL) {
-                    socket->id = -1;
-                    _at.unlock();
-                    return NSAPI_ERROR_PARAMETER;
-                }
-                socket_close_impl(modem_connect_id);
+		if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
+			if (err == HERACLES224G_SOCKET_BIND_FAIL) {
+				socket->id = -1;
+				_at.unlock();
+				return NSAPI_ERROR_PARAMETER;
+			}
+			socket_close_impl(modem_connect_id);
 
-                _at.at_cmd_discard("+QSSLOPEN", "=", "%d%d%d%s%d%d", _cid, sslctxID, request_connect_id,
-                                   address.get_ip_address(), address.get_port(), 0);
-                handle_open_socket_response(modem_connect_id, err, true);
-            }
-        } else {
-            char ipdot[NSAPI_IP_SIZE];
-            ip2dot(address, ipdot);
-            _at.at_cmd_discard("+QIOPEN", "=", "%d%d%s%s%d%d%d", _cid, request_connect_id, "TCP",
-                               ipdot, address.get_port(), socket->localAddress.get_port(), 0);
+			_at.at_cmd_discard("+QIOPEN", "=", "%d%d%s%s%d%d%d", _cid, request_connect_id, "TCP",
+							   ipdot, address.get_port(), socket->localAddress.get_port(), 0);
 
-            handle_open_socket_response(modem_connect_id, err, false);
-
-            if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
-                if (err == HERACLES224G_SOCKET_BIND_FAIL) {
-                    socket->id = -1;
-                    _at.unlock();
-                    return NSAPI_ERROR_PARAMETER;
-                }
-                socket_close_impl(modem_connect_id);
-
-                _at.at_cmd_discard("+QIOPEN", "=", "%d%d%s%s%d%d%d", _cid, request_connect_id, "TCP",
-                                   ipdot, address.get_port(), socket->localAddress.get_port(), 0);
-
-                handle_open_socket_response(modem_connect_id, err, false);
-            }
-        }
+			handle_open_socket_response(modem_connect_id, err, false);
+		}
     }
 
     // If opened successfully BUT not requested one, close it
@@ -173,16 +149,9 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close_impl(int sock_id)
     _at.set_at_timeout(HERACLES224G_CLOSE_SOCKET_TIMEOUT);
     nsapi_error_t err;
     CellularSocket *socket = find_socket(sock_id);
-    if (socket && socket->tls_socket) {
-        err = _at.at_cmd_discard("+QSSLCLOSE", "=", "%d", sock_id);
-        if (err == NSAPI_ERROR_OK) {
-            // Disable TLSSocket settings to prevent reuse on next socket without setting the values
-            _tls_sec_level = 0;
-            err = _at.at_cmd_discard("+QSSLCFG", "=\"seclevel\",", "%d%d", sslctxID, _tls_sec_level);
-        }
-    } else {
-        err = _at.at_cmd_discard("+QICLOSE", "=", "%d", sock_id);
-    }
+
+	err = _at.at_cmd_discard("+QICLOSE", "=", "%d", sock_id);
+
     _at.restore_at_timeout();
 
     return err;
@@ -191,21 +160,13 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close_impl(int sock_id)
 void SIMCOM_HERACLES224G_CellularStack::handle_open_socket_response(int &modem_connect_id, int &err, bool tlssocket)
 {
     // OK
-    // QIOPEN -> should be handled as URC?
+    // CIPSTART -> should be handled as URC?
     _at.set_at_timeout(HERACLES224G_CREATE_SOCKET_TIMEOUT);
 
-    if (tlssocket) {
-        _at.resp_start("+QSSLOPEN:");
-    } else {
-        _at.resp_start("+QIOPEN:");
-    }
+	_at.resp_start("CONNECT OK");
 
     _at.restore_at_timeout();
-    modem_connect_id = _at.read_int();
-    err = _at.read_int();
-    if (tlssocket && err != 0) {
-        err = NSAPI_ERROR_AUTH_FAILURE;
-    }
+
 }
 
 nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSocket *socket)
@@ -219,46 +180,42 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
     // specified handle
     MBED_ASSERT(request_connect_id != -1);
 
-    if (socket->proto == NSAPI_UDP && !socket->connected) {
-        _at.at_cmd_discard("+QIOPEN", "=", "%d%d%s%s%d%d%d", _cid, request_connect_id, "UDP SERVICE",
-                           (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
-                           remote_port, socket->localAddress.get_port(), 0);
+    // UDP type
+    if (socket->proto == NSAPI_UDP) {
+		if (!socket->connected) {
+			// UDP type
+			if (!socket->connected) {
+				_at.at_cmd_discard("+CIPSTART", "=", "%d,%s,%s,%d", request_connect_id, "UDP",
+								   (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
+								   socket->localAddress.get_port());
 
-        handle_open_socket_response(modem_connect_id, err, false);
+				handle_open_socket_response(modem_connect_id, err, false);
 
-        if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
-            if (err == HERACLES224G_SOCKET_BIND_FAIL) {
-                socket->id = -1;
-                return NSAPI_ERROR_PARAMETER;
-            }
-            socket_close_impl(modem_connect_id);
+				if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
+					if (err == HERACLES224G_SOCKET_BIND_FAIL) {
+						socket->id = -1;
+						return NSAPI_ERROR_PARAMETER;
+					}
+				}
+			}
 
-            _at.at_cmd_discard("+QIOPEN", "=", "%d%d%s%s%d%d%d", _cid, request_connect_id, "UDP SERVICE",
-                               (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
-                               remote_port, socket->localAddress.get_port(), 0);
+		}
+    } else if (socket->proto == NSAPI_TCP) {
+    	// TCP type
+    	if (!socket->connected) {
+			_at.at_cmd_discard("+CIPSTART", "=", "%d,%s,%s,%d", request_connect_id, "TCP",
+							   (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
+							   socket->localAddress.get_port());
 
-            handle_open_socket_response(modem_connect_id, err, false);
-        }
-    } else if (socket->proto == NSAPI_UDP && socket->connected) {
-        char ipdot[NSAPI_IP_SIZE];
-        ip2dot(socket->remoteAddress, ipdot);
-        _at.at_cmd_discard("+QIOPEN", "=", "%d%d%s%s%d", _cid, request_connect_id, "UDP",
-                           ipdot, socket->remoteAddress.get_port());
+			handle_open_socket_response(modem_connect_id, err, false);
 
-        handle_open_socket_response(modem_connect_id, err, false);
-
-        if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
-            if (err == HERACLES224G_SOCKET_BIND_FAIL) {
-                socket->id = -1;
-                return NSAPI_ERROR_PARAMETER;
-            }
-            socket_close_impl(modem_connect_id);
-
-            _at.at_cmd_discard("+QIOPEN", "=", "%d%d%s%s%d", _cid, request_connect_id, "UDP",
-                               ipdot, socket->remoteAddress.get_port());
-
-            handle_open_socket_response(modem_connect_id, err, false);
-        }
+			if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
+				if (err == HERACLES224G_SOCKET_BIND_FAIL) {
+					socket->id = -1;
+					return NSAPI_ERROR_PARAMETER;
+				}
+			}
+		}
     }
 
     // If opened successfully BUT not requested one, close it
@@ -292,12 +249,8 @@ nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_sendto_impl(Cell
     int sent_len_before = 0;
     int sent_len_after = 0;
 
-    if (socket->tls_socket) {
-        sent_len_after = size;
-    } else {
-        // Get the sent count before sending
-        _at.at_cmd_int("+QISEND", "=", sent_len_before, "%d%d", socket->id, 0);
-    }
+	// Get the sent count before sending
+	_at.at_cmd_int("+QISEND", "=", sent_len_before, "%d%d", socket->id, 0);
 
     // Send
     if (socket->proto == NSAPI_UDP) {
@@ -306,11 +259,7 @@ nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_sendto_impl(Cell
         _at.cmd_start_stop("+QISEND", "=", "%d%d%s%d", socket->id, size,
                            ipdot, address.get_port());
     } else {
-        if (socket->tls_socket) {
-            _at.cmd_start_stop("+QSSLSEND", "=", "%d%d", socket->id, size);
-        } else {
-            _at.cmd_start_stop("+QISEND", "=", "%d%d", socket->id, size);
-        }
+		_at.cmd_start_stop("+QISEND", "=", "%d%d", socket->id, size);
     }
 
     _at.resp_start(">");
@@ -351,20 +300,14 @@ nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_recvfrom_impl(Ce
     if (socket->proto == NSAPI_TCP) {
         // do not read more than max size
         size = size > HERACLES224G_MAX_RECV_SIZE ? HERACLES224G_MAX_RECV_SIZE : size;
-        if (socket->tls_socket) {
-            _at.cmd_start_stop("+QSSLRECV", "=", "%d%d", socket->id, size);
-        } else {
-            _at.cmd_start_stop("+QIRD", "=", "%d%d", socket->id, size);
-        }
+		_at.cmd_start_stop("+QIRD", "=", "%d%d", socket->id, size);
+
     } else {
         _at.cmd_start_stop("+QIRD", "=", "%d", socket->id);
     }
 
-    if (socket->tls_socket) {
-        _at.resp_start("+QSSLRECV:");
-    } else {
-        _at.resp_start("+QIRD:");
-    }
+	_at.resp_start("+QIRD:");
+
 
     recv_len = _at.read_int();
     if (recv_len > 0) {
