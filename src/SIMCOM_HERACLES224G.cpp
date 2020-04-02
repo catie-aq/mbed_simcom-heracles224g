@@ -183,7 +183,6 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
              if (_rst.is_connected()) {
                  press_button(_rst, 150);
              }
-
          }
          _at.lock();
          // According to Heracles_Hardware_Design_V1.02, serial_port is active after 3s, but it seems to take over 5s
