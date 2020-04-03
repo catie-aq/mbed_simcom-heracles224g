@@ -1,5 +1,5 @@
 {
-    "name": "SIMCOM_HERACLES224G",
+    "name": "simcom_heracles224g",
     "config": {
         "tx": {
             "help": "TX pin for serial connection. D1 assumed if Arduino Form Factor, needs to be set/overwritten otherwise.",
