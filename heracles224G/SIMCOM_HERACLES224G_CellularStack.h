@@ -33,6 +33,11 @@ typedef enum {
     URC_CLOSED,
 } urc_type_t;
 
+typedef enum {
+	SINGLE_TCP = 0,
+	MULTI_TCP
+} tcpip_connection_mode_t;
+
 class SIMCOM_HERACLES224G_CellularStack : public AT_CellularStack {
 public:
     SIMCOM_HERACLES224G_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type, AT_CellularDevice &device);
@@ -80,6 +85,8 @@ private:
      *  @param dot buffer with size NSAPI_IPv6, where address is written zero terminated
      */
     void ip2dot(const SocketAddress &ip, char *dot);
+
+    tcpip_connection_mode_t _tcpip_mode;
 };
 } // namespace mbed
 #endif /* SIMCOM_HERACLES224G_CELLULARSTACK_H_ */

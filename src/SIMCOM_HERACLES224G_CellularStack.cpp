@@ -21,14 +21,6 @@
 #include "CellularLog.h"
 #include "netsocket/TLSSocket.h"
 
-// Ref: SIMCOM_HERACLES224G_SSL_AT_Commands_Manual, ch 2.1.1 AT+QSSLCFG
-static const int HERACLES224G_SUPPORTED_SSL_VERSION     = 4; // All
-static const char HERACLES224G_SUPPORTED_CIPHER_SUITE[] = "0xFFFF"; // Support all
-
-// TODO: At the moment we support only one active SSL context
-//       Later can be expanded to support multiple contexts. Modem supports IDs 0-5.
-static const int sslctxID = 0;
-
 using namespace mbed;
 
 SIMCOM_HERACLES224G_CellularStack::SIMCOM_HERACLES224G_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type, AT_CellularDevice &device) :
@@ -71,8 +63,8 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
     if (socket->proto == NSAPI_TCP) {
 		char ipdot[NSAPI_IP_SIZE];
 		ip2dot(address, ipdot);
-		_at.at_cmd_discard("+QIOPEN", "=", "%d%d%s%s%d%d%d", _cid, request_connect_id, "TCP",
-						   ipdot, address.get_port(), socket->localAddress.get_port(), 0);
+		_at.at_cmd_discard("+CIPSTART", "=", "%d,%s,%s,%d", request_connect_id, "UDP",
+							socket->localAddress.get_ip_address(), socket->localAddress.get_port());
 
 		handle_open_socket_response(modem_connect_id, err, false);
 
@@ -82,12 +74,6 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
 				_at.unlock();
 				return NSAPI_ERROR_PARAMETER;
 			}
-			socket_close_impl(modem_connect_id);
-
-			_at.at_cmd_discard("+QIOPEN", "=", "%d%d%s%s%d%d%d", _cid, request_connect_id, "TCP",
-							   ipdot, address.get_port(), socket->localAddress.get_port(), 0);
-
-			handle_open_socket_response(modem_connect_id, err, false);
 		}
     }
 
@@ -159,11 +145,16 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close_impl(int sock_id)
 
 void SIMCOM_HERACLES224G_CellularStack::handle_open_socket_response(int &modem_connect_id, int &err, bool tlssocket)
 {
+	nsapi_error_t error;
     // OK
     // CIPSTART -> should be handled as URC?
     _at.set_at_timeout(HERACLES224G_CREATE_SOCKET_TIMEOUT);
 
 	_at.resp_start("CONNECT OK");
+
+	if ((error =_at.get_last_error()) != NSAPI_ERROR_OK) {
+
+	}
 
     _at.restore_at_timeout();
 
@@ -180,12 +171,32 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
     // specified handle
     MBED_ASSERT(request_connect_id != -1);
 
-    // UDP type
-    if (socket->proto == NSAPI_UDP) {
-		if (!socket->connected) {
-			// UDP type
+    if (_tcpip_mode == SINGLE_TCP) {
+    	// single tcpip connection mode
+    	// UDP type
+		if (socket->proto == NSAPI_UDP) {
 			if (!socket->connected) {
-				_at.at_cmd_discard("+CIPSTART", "=", "%d,%s,%s,%d", request_connect_id, "UDP",
+				// UDP type: format AT+CIPSTART="UDP","ip_address","port"
+				if (!socket->connected) {
+					_at.at_cmd_discard("+CIPSTART", "=", "%d,%s,%s,%d", "UDP",
+									   (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
+									   socket->localAddress.get_port());
+
+					handle_open_socket_response(modem_connect_id, err, false);
+
+					if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
+						if (err == HERACLES224G_SOCKET_BIND_FAIL) {
+							socket->id = -1;
+							return NSAPI_ERROR_PARAMETER;
+						}
+					}
+				}
+
+			}
+		} else if (socket->proto == NSAPI_TCP) {
+			// TCP type: format AT+CIPSTART="TCP","ip_address","port"
+			if (!socket->connected) {
+				_at.at_cmd_discard("+CIPSTART", "=", "'\"%s\",\"%s\",\"%d\"", "TCP",
 								   (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
 								   socket->localAddress.get_port());
 
@@ -198,21 +209,43 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
 					}
 				}
 			}
-
 		}
-    } else if (socket->proto == NSAPI_TCP) {
-    	// TCP type
-    	if (!socket->connected) {
-			_at.at_cmd_discard("+CIPSTART", "=", "%d,%s,%s,%d", request_connect_id, "TCP",
-							   (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
-							   socket->localAddress.get_port());
+    } else {
+    	// multiple tcpip connection mode
+    	// UDP type
+		if (socket->proto == NSAPI_UDP) {
+			if (!socket->connected) {
+				// UDP type: single
+				if (!socket->connected) {
+					_at.at_cmd_discard("+CIPSTART", "=", "%d,%s,%s,%d", request_connect_id, "UDP",
+									   (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
+									   socket->localAddress.get_port());
 
-			handle_open_socket_response(modem_connect_id, err, false);
+					handle_open_socket_response(modem_connect_id, err, false);
 
-			if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
-				if (err == HERACLES224G_SOCKET_BIND_FAIL) {
-					socket->id = -1;
-					return NSAPI_ERROR_PARAMETER;
+					if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
+						if (err == HERACLES224G_SOCKET_BIND_FAIL) {
+							socket->id = -1;
+							return NSAPI_ERROR_PARAMETER;
+						}
+					}
+				}
+
+			}
+		} else if (socket->proto == NSAPI_TCP) {
+			// TCP type
+			if (!socket->connected) {
+				_at.at_cmd_discard("+CIPSTART", "=", "%d,%s,%s,%d", request_connect_id, "TCP",
+								   (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
+								   socket->localAddress.get_port());
+
+				handle_open_socket_response(modem_connect_id, err, false);
+
+				if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
+					if (err == HERACLES224G_SOCKET_BIND_FAIL) {
+						socket->id = -1;
+						return NSAPI_ERROR_PARAMETER;
+					}
 				}
 			}
 		}
