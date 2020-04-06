@@ -107,6 +107,7 @@ private:
 
     tcpip_connection_mode_t _tcpip_mode;
     data_transmitting_mode_t _data_transmitting_mode;
+
 };
 } // namespace mbed
 #endif /* SIMCOM_HERACLES224G_CELLULARSTACK_H_ */

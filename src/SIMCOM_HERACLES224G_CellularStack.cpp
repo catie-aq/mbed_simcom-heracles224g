@@ -34,7 +34,6 @@ SIMCOM_HERACLES224G_CellularStack::SIMCOM_HERACLES224G_CellularStack(ATHandler &
     _at.clear_error();
 }
 
-<<<<<<< HEAD
 SIMCOM_HERACLES224G_CellularStack::~SIMCOM_HERACLES224G_CellularStack() // @suppress("Member declaration not found")
 {
 }
@@ -323,13 +322,16 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close_impl(int sock_id)
 
 void SIMCOM_HERACLES224G_CellularStack::handle_open_socket_response(int &modem_connect_id, int &err, bool tlssocket)
 {
-
 	nsapi_error_t error;
     // OK
     // CIPSTART -> should be handled as URC?
     _at.set_at_timeout(HERACLES224G_CREATE_SOCKET_TIMEOUT);
 
 	_at.resp_start("CONNECT OK");
+
+	if ((error =_at.get_last_error()) != NSAPI_ERROR_OK) {
+
+	}
 
     _at.restore_at_timeout();
 
@@ -351,7 +353,6 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
     // assert here as its a programming error if the socket container doesn't contain
     // specified handle
     MBED_ASSERT(request_connect_id != -1);
-
 
     if (_tcpip_mode == SINGLE_TCP) {
     	// single tcpip connection mode
@@ -391,7 +392,6 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
 					}
 				}
 			}
-
 		}
     } else {
     	// multiple tcpip connection mode
@@ -421,7 +421,6 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
 				_at.at_cmd_discard("+CIPSTART", "=", "\"%d\",\"%s\",\"%s\",\"%d\"", request_connect_id, "TCP",
 								   (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
 								   socket->localAddress.get_port());
-
 
 				handle_open_socket_response(modem_connect_id, err, false);
 
