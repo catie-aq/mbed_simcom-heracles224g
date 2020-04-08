@@ -18,26 +18,34 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "SIMCOM_HERACLES224G_CellularStack.h"
+#include "heracles224G/SIMCOM_HERACLES224G_CellularStack.h"
 #include "CellularLog.h"
 #include "netsocket/TLSSocket.h"
 
 using namespace mbed;
 
 SIMCOM_HERACLES224G_CellularStack::SIMCOM_HERACLES224G_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type, AT_CellularDevice &device) :
-    AT_CellularStack(atHandler, cid, stack_type, device)
-    , _tls_sec_level(0)
+    AT_CellularStack(atHandler, cid, stack_type, device),
+	_tls_sec_level(0)
 {
 	_tcpip_mode = SINGLE_TCP;
+	_data_transmitting_mode = NORMAL;
 //    _at.set_urc_handler("+CIPSEND: ", mbed::Callback<void()>(this, &SIMCOM_HERACLES224G_CellularStack::urc_qiurc_recv));
 
     _at.clear_error();
 }
 
-SIMCOM_HERACLES224G_CellularStack::~SIMCOM_HERACLES224G_CellularStack()
+SIMCOM_HERACLES224G_CellularStack::~SIMCOM_HERACLES224G_CellularStack() // @suppress("Member declaration not found")
 {
 }
 
+/*****************************************************************************************
+ *
+ *
+ * Network stack
+ *
+ *
+ *******************************************************************************************/
 nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_listen(nsapi_socket_t handle, int backlog)
 {
     return NSAPI_ERROR_UNSUPPORTED;
@@ -57,6 +65,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
 
     // assert here as its a programming error if the socket container doesn't contain
     // specified handle
+    int request_connect_id = find_socket_index(socket);
     MBED_ASSERT(request_connect_id != -1);
 
     _at.lock();
@@ -192,7 +201,7 @@ void SIMCOM_HERACLES224G_CellularStack::urc_qiurc(urc_type_t urc_type)
 /*****************************************************************************************
  *
  *
- *
+ * AT cellular stack
  *
  *
  *******************************************************************************************/
@@ -351,37 +360,61 @@ nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_sendto_impl(Cell
     int sent_len_before = 0;
     int sent_len_after = 0;
 
-	// Get the sent count before sending
-	_at.at_cmd_int("+CIPSEND", "=", sent_len_before, "%d%d", socket->id, 0);
 
-    // Send
-    if (socket->proto == NSAPI_UDP) {
-        char ipdot[NSAPI_IP_SIZE];
-        ip2dot(address, ipdot);
-        _at.cmd_start_stop("+QISEND", "=", "%d%d%s%d", socket->id, size,
-                           ipdot, address.get_port());
+    if (_tcpip_mode == SINGLE_TCP) {
+    	// Send
+		if (socket->proto == NSAPI_UDP) {
+			char ipdot[NSAPI_IP_SIZE];
+			ip2dot(address, ipdot);
+			_at.cmd_start_stop("+CIPSEND", "=", "%d%s%d", size,
+							   ipdot, address.get_port());
+		} else {
+			_at.cmd_start_stop("+CIPSEND", "=", "%d", size);
+		}
+
+		_at.resp_start(">");
+		_at.write_bytes((uint8_t *)data, size);
+		_at.resp_start();
+		if (_data_transmitting_mode == NORMAL) {
+			_at.set_stop_tag("SEND OK");
+		} else {
+			_at.set_stop_tag("DATA ACCEPT");
+		}
+
     } else {
-		_at.cmd_start_stop("+QISEND", "=", "%d%d", socket->id, size);
-    }
+//    	// Get the sent count before sending
+//    	_at.at_cmd_int("+CIPSEND", "=", sent_len_before, "%d%d", socket->id, 0);
 
-    _at.resp_start(">");
-    _at.write_bytes((uint8_t *)data, size);
-    _at.resp_start();
-    _at.set_stop_tag("\r\n");
-    // Possible responses are SEND OK, SEND FAIL or ERROR.
-    char response[16];
-    response[0] = '\0';
-    _at.read_string(response, sizeof(response));
-    _at.resp_stop();
-    if (strcmp(response, "SEND OK") != 0) {
-        return NSAPI_ERROR_DEVICE_ERROR;
-    }
+		// Send
+		if (socket->proto == NSAPI_UDP) {
+			char ipdot[NSAPI_IP_SIZE];
+			ip2dot(address, ipdot);
+			_at.cmd_start_stop("+QISEND", "=", "%d%d%s%d", socket->id, size,
+							   ipdot, address.get_port());
+		} else {
+			_at.cmd_start_stop("+QISEND", "=", "%d%d", socket->id, size);
+		}
 
-    // Get the sent count after sending
-    nsapi_size_or_error_t err = NSAPI_ERROR_OK;
+		_at.resp_start(">");
+		_at.write_bytes((uint8_t *)data, size);
+		_at.resp_start();
+		_at.set_stop_tag("\r\n");
+		// Possible responses are SEND OK, SEND FAIL or ERROR.
+		char response[16];
+		response[0] = '\0';
+		_at.read_string(response, sizeof(response));
+		_at.resp_stop();
+		if (strcmp(response, "SEND OK") != 0) {
+			return NSAPI_ERROR_DEVICE_ERROR;
+		}
 
-    if (!socket->tls_socket) {
-        err = _at.at_cmd_int("+QISEND", "=", sent_len_after, "%d%d", socket->id, 0);
+//		// Get the sent count after sending
+//		nsapi_size_or_error_t err = NSAPI_ERROR_OK;
+//
+//		if (!socket->tls_socket) {
+//			err = _at.at_cmd_int("+QISEND", "=", sent_len_after, "%d%d", socket->id, 0);
+//		}
+
     }
 
     if (err == NSAPI_ERROR_OK) {
