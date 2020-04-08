@@ -18,11 +18,13 @@
 #ifndef SIMCOM_HERACLES224G_CELLULARSTACK_H_
 #define SIMCOM_HERACLES224G_CELLULARSTACK_H_
 
+#include "mbed.h"
+
 #include "AT_CellularStack.h"
 
 namespace mbed {
 
-#define HERACLES224G_CREATE_SOCKET_TIMEOUT 150000 //150 seconds
+#define HERACLES224G_CREATE_SOCKET_TIMEOUT 160000 //160 seconds
 #define HERACLES224G_CLOSE_SOCKET_TIMEOUT 30000 // TCP socket max timeout is >10sec
 #define HERACLES224G_MAX_RECV_SIZE 1500
 #define HERACLES224G_MAX_SEND_SIZE 1460
@@ -37,6 +39,11 @@ typedef enum {
 	SINGLE_TCP = 0,
 	MULTI_TCP
 } tcpip_connection_mode_t;
+
+typedef enum {
+	NORMAL = 0,
+	QUICK
+} data_transmitting_mode_t;
 
 class SIMCOM_HERACLES224G_CellularStack : public AT_CellularStack {
 public:
@@ -87,6 +94,7 @@ private:
     void ip2dot(const SocketAddress &ip, char *dot);
 
     tcpip_connection_mode_t _tcpip_mode;
+    data_transmitting_mode_t _data_transmitting_mode;
 };
 } // namespace mbed
 #endif /* SIMCOM_HERACLES224G_CELLULARSTACK_H_ */
