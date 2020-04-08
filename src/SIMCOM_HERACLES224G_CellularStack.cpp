@@ -294,7 +294,6 @@ void SIMCOM_HERACLES224G_CellularStack::urc_qiurc(urc_type_t urc_type)
  *
  *
  * AT cellular stack
-
  *
  *
  *******************************************************************************************/

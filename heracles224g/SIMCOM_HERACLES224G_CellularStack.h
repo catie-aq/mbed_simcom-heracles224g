@@ -23,8 +23,6 @@
 #include "AT_CellularStack.h"
 
 namespace mbed {
-
-
 #define HERACLES224G_CREATE_SOCKET_TIMEOUT 160000 //160 seconds
 #define HERACLES224G_CLOSE_SOCKET_TIMEOUT 30000 // TCP socket max timeout is >10sec
 #define HERACLES224G_MAX_RECV_SIZE 1500
@@ -107,7 +105,6 @@ private:
 
     tcpip_connection_mode_t _tcpip_mode;
     data_transmitting_mode_t _data_transmitting_mode;
-
 };
 } // namespace mbed
 #endif /* SIMCOM_HERACLES224G_CELLULARSTACK_H_ */
