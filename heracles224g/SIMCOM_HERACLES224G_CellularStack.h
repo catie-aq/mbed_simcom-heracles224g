@@ -66,9 +66,11 @@ protected: // NetworkStack
     virtual nsapi_size_or_error_t socket_recv(nsapi_socket_t handle,
                                                   void *data, nsapi_size_t size);
 
+
 #ifdef MBED_CONF_CELLULAR_OFFLOAD_DNS_QUERIES
     virtual nsapi_error_t gethostbyname(const char *host, SocketAddress *address, nsapi_version_t version, const char *interface_name);
 #endif
+
 
 protected: // AT_CellularStack
 
