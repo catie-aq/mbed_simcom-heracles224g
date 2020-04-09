@@ -59,6 +59,14 @@ protected: // NetworkStack
 
     virtual nsapi_error_t socket_connect(nsapi_socket_t handle, const SocketAddress &address);
 
+    virtual nsapi_error_t socket_close(nsapi_socket_t handle);
+
+    virtual nsapi_size_or_error_t socket_sendto(nsapi_socket_t handle, const SocketAddress &address,
+                                                const void *data, nsapi_size_t size);
+
+    virtual nsapi_size_or_error_t socket_recv(nsapi_socket_t handle,
+                                                  void *data, nsapi_size_t size);
+
 
 protected: // AT_CellularStack
 
