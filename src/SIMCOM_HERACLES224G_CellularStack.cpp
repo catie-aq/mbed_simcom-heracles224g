@@ -363,66 +363,35 @@ nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_sendto_impl(Cell
 
     if (_tcpip_mode == SINGLE_TCP) {
     	// Send
-		if (socket->proto == NSAPI_UDP) {
-			char ipdot[NSAPI_IP_SIZE];
-			ip2dot(address, ipdot);
-			_at.cmd_start_stop("+CIPSEND", "=", "%d%s%d", size,
-							   ipdot, address.get_port());
-		} else {
-			_at.cmd_start_stop("+CIPSEND", "=", "%d", size);
-		}
-
+		_at.cmd_start_stop("+CIPSEND", "=", "%d", size);
 		_at.resp_start(">");
 		_at.write_bytes((uint8_t *)data, size);
 		_at.resp_start();
-		if (_data_transmitting_mode == NORMAL) {
-			_at.set_stop_tag("SEND OK");
-		} else {
-			_at.set_stop_tag("DATA ACCEPT");
-		}
-
     } else {
-//    	// Get the sent count before sending
-//    	_at.at_cmd_int("+CIPSEND", "=", sent_len_before, "%d%d", socket->id, 0);
-
 		// Send
-		if (socket->proto == NSAPI_UDP) {
-			char ipdot[NSAPI_IP_SIZE];
-			ip2dot(address, ipdot);
-			_at.cmd_start_stop("+QISEND", "=", "%d%d%s%d", socket->id, size,
-							   ipdot, address.get_port());
-		} else {
-			_at.cmd_start_stop("+QISEND", "=", "%d%d", socket->id, size);
-		}
-
+    	_at.cmd_start_stop("+CIPSEND", "=", "%d%d", socket->id, size);
 		_at.resp_start(">");
 		_at.write_bytes((uint8_t *)data, size);
 		_at.resp_start();
-		_at.set_stop_tag("\r\n");
-		// Possible responses are SEND OK, SEND FAIL or ERROR.
-		char response[16];
-		response[0] = '\0';
-		_at.read_string(response, sizeof(response));
-		_at.resp_stop();
-		if (strcmp(response, "SEND OK") != 0) {
+    }
+
+    // Possible responses are SEND OK, DATA ACCEPT or CME ERROR.
+    char response[16];
+    response[0] = '\0';
+	_at.read_string(response, sizeof(response));
+	_at.resp_stop();
+
+	if (_data_transmitting_mode == NORMAL) {
+		if (strstr(response, "SEND OK") == 0) {
 			return NSAPI_ERROR_DEVICE_ERROR;
 		}
+	} else {
+		if (strstr(response, "DATA ACCEPT") == 0) {
+			return NSAPI_ERROR_DEVICE_ERROR;
+		}
+	}
 
-//		// Get the sent count after sending
-//		nsapi_size_or_error_t err = NSAPI_ERROR_OK;
-//
-//		if (!socket->tls_socket) {
-//			err = _at.at_cmd_int("+QISEND", "=", sent_len_after, "%d%d", socket->id, 0);
-//		}
-
-    }
-
-    if (err == NSAPI_ERROR_OK) {
-        sent_len = sent_len_after - sent_len_before;
-        return sent_len;
-    }
-
-    return err;
+    return NSAPI_ERROR_OK;
 }
 
 nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_recvfrom_impl(CellularSocket *socket, SocketAddress *address,
