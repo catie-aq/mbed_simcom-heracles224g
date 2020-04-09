@@ -309,8 +309,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close_impl(int sock_id)
         CellularSocket *socket = find_socket(sock_id);
     	err = _at.at_cmd_discard("+CIPCLOSE", "=", "%d", sock_id);
     }
-//    _at.resp_start("CLOSE OK");
-//    _at.resp_stop();
+
     _at.restore_at_timeout();
 
     err = _at.get_last_error();
@@ -328,6 +327,10 @@ void SIMCOM_HERACLES224G_CellularStack::handle_open_socket_response(int &modem_c
 	_at.resp_start("CONNECT OK");
 
     _at.restore_at_timeout();
+    _at.resp_stop();
+    _at.restore_at_timeout();
+
+    err = _at.get_last_error();
 
     _at.resp_stop();
     _at.restore_at_timeout();
