@@ -32,6 +32,36 @@ SIMCOM_HERACLES224G_CellularContext::~SIMCOM_HERACLES224G_CellularContext()
 {
 }
 
+#if !NSAPI_PPP_AVAILABLE
+NetworkStack *SIMCOM_HERACLES224G_CellularContext::get_stack()
+{
+    if (_pdp_type == NON_IP_PDP_TYPE || (_nonip_req && _pdp_type != DEFAULT_PDP_TYPE)) {
+        tr_error("Requesting stack for NON-IP context! Should request control plane netif: get_cp_netif()");
+        return NULL;
+    }
+
+    if (!_stack) {
+        _stack = new SIMCOM_HERACLES224G_CellularStack(_at, _cid, (nsapi_ip_stack_t)_pdp_type, *get_device());
+    }
+
+    return _stack;
+}
+#endif // #if !NSAPI_PPP_AVAILABLE
+
+void SIMCOM_HERACLES224G_CellularContext::activate_context()
+{
+    tr_info("Activate PDP context %d", _cid);
+
+    if (_at.at_cmd_discard("+CGACT", "=", "%d,%d", 1, _cid) == NSAPI_ERROR_OK) {
+        _is_context_activated = true;
+    }
+}
+
+void SIMCOM_HERACLES224G_CellularContext::deactivate_context()
+{
+    _at.at_cmd_discard("+CGACT", "=", "%d,%d", 0, _cid);
+}
+
 bool SIMCOM_HERACLES224G_CellularContext::get_context()
 {
     bool modem_supports_ipv6 = get_device()->get_property(AT_CellularDevice::PROPERTY_IPV6_PDP_TYPE);
