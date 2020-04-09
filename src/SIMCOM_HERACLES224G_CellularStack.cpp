@@ -161,6 +161,98 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
     return err;
 }
 
+nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close(nsapi_socket_t handle)
+{
+	CellularSocket *socket = (CellularSocket *)handle;
+	nsapi_error_t err;
+
+	_at.lock();
+
+	_at.set_at_timeout(HERACLES224G_CLOSE_SOCKET_TIMEOUT);
+
+	if (_tcpip_mode == SINGLE_TCP) {
+		_at.cmd_start("+CIPCLOSE");
+	} else {
+		int request_connect_id = find_socket_index(socket);
+		err = _at.at_cmd_discard("+CIPCLOSE", "=", "%d", request_connect_id);
+	}
+	_at.resp_start();
+	_at.set_stop_tag("CLOSE OK");
+	_at.restore_at_timeout();
+
+	err = _at.get_last_error();
+
+	_at.unlock();
+
+	return err;
+}
+
+nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_sendto(nsapi_socket_t handle, const SocketAddress &address,
+                                            const void *data, nsapi_size_t size)
+{
+	CellularSocket *socket = (CellularSocket *)handle;
+
+	 if (size > HERACLES224G_MAX_SEND_SIZE) {
+		return NSAPI_ERROR_PARAMETER;
+	}
+
+	if (_ip_ver_sendto != address.get_ip_version()) {
+		_ip_ver_sendto =  address.get_ip_version();
+		socket_close_impl(socket->id);
+		create_socket_impl(socket);
+	}
+
+	int sent_len = 0;
+	int sent_len_before = 0;
+	int sent_len_after = 0;
+
+	_at.lock();
+
+	if (_tcpip_mode == SINGLE_TCP) {
+		// Send
+		_at.cmd_start_stop("+CIPSEND", "=", "%d", size);
+		_at.resp_start(">");
+		_at.write_bytes((uint8_t *)data, size);
+		_at.resp_start();
+	} else {
+		// Send
+		_at.cmd_start_stop("+CIPSEND", "=", "%d%d", socket->id, size);
+		_at.resp_start(">");
+		_at.write_bytes((uint8_t *)data, size);
+		_at.resp_start();
+	}
+
+	// Possible responses are SEND OK, DATA ACCEPT or CME ERROR.
+	char response[16];
+	response[0] = '\0';
+	_at.read_string(response, sizeof(response));
+	_at.resp_stop();
+
+	if (_data_transmitting_mode == NORMAL) {
+		if (strstr(response, "SEND OK") == 0) {
+			return NSAPI_ERROR_DEVICE_ERROR;
+		}
+	} else {
+		if (strstr(response, "DATA ACCEPT") == 0) {
+			return NSAPI_ERROR_DEVICE_ERROR;
+		}
+	}
+
+	_at.unlock();
+
+	return NSAPI_ERROR_OK;
+}
+
+nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_recv(nsapi_socket_t handle,
+                                              void *data, nsapi_size_t size)
+{
+	_at.lock();
+	_at.resp_start();
+	_at.read_string((char *)data, size);
+	_at.resp_stop();
+	_at.unlock();
+}
+
 void SIMCOM_HERACLES224G_CellularStack::urc_qiurc_recv()
 {
     urc_qiurc(URC_RECV);
@@ -198,6 +290,7 @@ void SIMCOM_HERACLES224G_CellularStack::urc_qiurc(urc_type_t urc_type)
 
 
 
+
 /*****************************************************************************************
  *
  *
@@ -212,7 +305,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close_impl(int sock_id)
 	_at.set_at_timeout(HERACLES224G_CLOSE_SOCKET_TIMEOUT);
 
     if (_tcpip_mode == SINGLE_TCP) {
-    	err = _at.cmd_start_stop("+CIPCLOSE");
+    	_at.cmd_start("+CIPCLOSE");
 
     } else {
         CellularSocket *socket = find_socket(sock_id);
