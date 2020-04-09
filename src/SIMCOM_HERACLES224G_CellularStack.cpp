@@ -208,18 +208,22 @@ void SIMCOM_HERACLES224G_CellularStack::urc_qiurc(urc_type_t urc_type)
 
 nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close_impl(int sock_id)
 {
-    _at.set_at_timeout(HERACLES224G_CLOSE_SOCKET_TIMEOUT);
-    nsapi_error_t err;
-    CellularSocket *socket = find_socket(sock_id);
+	nsapi_error_t err;
+	_at.set_at_timeout(HERACLES224G_CLOSE_SOCKET_TIMEOUT);
 
     if (_tcpip_mode == SINGLE_TCP) {
-    	err = _at.at_cmd_discard("+CIPCLOSE");
+    	err = _at.cmd_start_stop("+CIPCLOSE");
 
     } else {
+        CellularSocket *socket = find_socket(sock_id);
     	err = _at.at_cmd_discard("+CIPCLOSE", "=", "%d", sock_id);
     }
+    _at.resp_start("CLOSE OK");
+    _at.resp_stop();
 
     _at.restore_at_timeout();
+
+    err = _at.get_last_error();
 
     return err;
 }
@@ -234,6 +238,10 @@ void SIMCOM_HERACLES224G_CellularStack::handle_open_socket_response(int &modem_c
 	_at.resp_start("CONNECT OK");
 
     _at.restore_at_timeout();
+    _at.resp_stop();
+    _at.restore_at_timeout();
+
+    err = _at.get_last_error();
 
 }
 
