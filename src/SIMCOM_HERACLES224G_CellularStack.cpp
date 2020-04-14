@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "heracles224G/SIMCOM_HERACLES224G_CellularStack.h"
+#include "heracles224g/SIMCOM_HERACLES224G_CellularStack.h"
 #include "CellularLog.h"
 #include "netsocket/TLSSocket.h"
 
@@ -311,8 +311,8 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close_impl(int sock_id)
         CellularSocket *socket = find_socket(sock_id);
     	err = _at.at_cmd_discard("+CIPCLOSE", "=", "%d", sock_id);
     }
-    _at.resp_start("CLOSE OK");
-    _at.resp_stop();
+//    _at.resp_start("CLOSE OK");
+//    _at.resp_stop();
 
     _at.restore_at_timeout();
 
@@ -557,3 +557,33 @@ void SIMCOM_HERACLES224G_CellularStack::ip2dot(const SocketAddress &ip, char *do
         *dot = '\0';
     }
 }
+
+#ifdef MBED_CONF_CELLULAR_OFFLOAD_DNS_QUERIES
+nsapi_error_t QUECTEL_BG96_CellularStack::gethostbyname(const char *host, SocketAddress *address,
+                                                        nsapi_version_t version, const char *interface_name)
+{
+    (void) interface_name;
+    MBED_ASSERT(host);
+    MBED_ASSERT(address);
+
+    _at.lock();
+
+    if (_dns_callback) {
+        _at.unlock();
+        return NSAPI_ERROR_BUSY;
+    }
+
+    if (!address->set_ip_address(host)) {
+        _at.set_at_timeout(60 * 1000); // from BG96_TCP/IP_AT_Commands_Manual_V1.0
+        _at.at_cmd_discard("+CIDNSGIP", "=", "%s", host);
+        _at.resp_start("+CDNSGIP: 1,");
+        _at.restore_at_timeout();
+        if (!read_dnsgip(*address, version)) {
+            _at.unlock();
+            return NSAPI_ERROR_DNS_FAILURE;
+        }
+    }
+
+    return _at.unlock_return_error();
+}
+#endif
