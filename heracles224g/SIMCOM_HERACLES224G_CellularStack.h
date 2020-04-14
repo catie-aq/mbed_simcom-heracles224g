@@ -70,12 +70,6 @@ protected: // NetworkStack
     virtual nsapi_error_t gethostbyname(const char *host, SocketAddress *address, nsapi_version_t version, const char *interface_name);
 #endif
 
-
-#ifdef MBED_CONF_CELLULAR_OFFLOAD_DNS_QUERIES
-    virtual nsapi_error_t gethostbyname(const char *host, SocketAddress *address, nsapi_version_t version, const char *interface_name);
-#endif
-
-
 protected: // AT_CellularStack
 
     virtual nsapi_error_t socket_close_impl(int sock_id);
