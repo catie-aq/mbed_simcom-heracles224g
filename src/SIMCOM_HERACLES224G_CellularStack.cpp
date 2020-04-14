@@ -559,7 +559,7 @@ void SIMCOM_HERACLES224G_CellularStack::ip2dot(const SocketAddress &ip, char *do
 }
 
 #ifdef MBED_CONF_CELLULAR_OFFLOAD_DNS_QUERIES
-nsapi_error_t QUECTEL_BG96_CellularStack::gethostbyname(const char *host, SocketAddress *address,
+nsapi_error_t SIMCOM_HERACLES224G_CellularStack::gethostbyname(const char *host, SocketAddress *address,
                                                         nsapi_version_t version, const char *interface_name)
 {
     (void) interface_name;
