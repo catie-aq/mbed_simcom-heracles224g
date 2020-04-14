@@ -586,4 +586,3 @@ nsapi_error_t QUECTEL_BG96_CellularStack::gethostbyname(const char *host, Socket
     return _at.unlock_return_error();
 }
 #endif
-
