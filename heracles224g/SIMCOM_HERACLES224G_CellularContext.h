@@ -26,6 +26,11 @@ public:
     SIMCOM_HERACLES224G_CellularContext(ATHandler &at, CellularDevice *device, const char *apn, bool cp_req = false, bool nonip_req = false);
     virtual ~SIMCOM_HERACLES224G_CellularContext();
 protected:
+#if !NSAPI_PPP_AVAILABLE
+    virtual NetworkStack *get_stack();
+#endif // #if !NSAPI_PPP_AVAILABLE
+    virtual void deactivate_context();
+    virtual void activate_context();
     virtual bool get_context();
 };
 
