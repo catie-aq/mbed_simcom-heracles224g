@@ -67,10 +67,7 @@ protected: // NetworkStack
     virtual nsapi_size_or_error_t socket_recv(nsapi_socket_t handle,
                                                   void *data, nsapi_size_t size);
 
-#ifdef MBED_CONF_CELLULAR_OFFLOAD_DNS_QUERIES
     virtual nsapi_error_t gethostbyname(const char *host, SocketAddress *address, nsapi_version_t version, const char *interface_name);
-#endif
-
 
 protected: // AT_CellularStack
 
@@ -93,6 +90,8 @@ private:
     void urc_qiurc_closed();
 
     void handle_open_socket_response(int &modem_connect_id, int &err, bool tlssocket);
+
+    bool read_dnsgip(SocketAddress &address, nsapi_version_t _dns_version);
 
     uint8_t _tls_sec_level;
 
