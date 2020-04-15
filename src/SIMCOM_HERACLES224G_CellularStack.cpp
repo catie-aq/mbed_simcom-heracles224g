@@ -572,8 +572,8 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::gethostbyname(const char *host,
 //    }
 
     if (!address->set_ip_address(host)) {
-        _at.set_at_timeout(60 * 1000); // from BG96_TCP/IP_AT_Commands_Manual_V1.0
-        _at.at_cmd_discard("+CIDNSGIP", "=", "%s", host);
+        _at.set_at_timeout(5000); // not defined in the datasheet.
+        _at.at_cmd_discard("+CDNSGIP", "=", "\"%s\"", host);
         _at.resp_start("+CDNSGIP: ");
         _at.restore_at_timeout();
         if (!read_dnsgip(*address, version)) {
@@ -588,18 +588,16 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::gethostbyname(const char *host,
 bool SIMCOM_HERACLES224G_CellularStack::read_dnsgip(SocketAddress &address, nsapi_version_t _dns_version)
 {
     if (_at.read_int() == 1) {
-        int count = _at.read_int();
         _at.skip_param();
-        for (; count > 0; count--) {
-            _at.resp_start("+CDNSGIP: 1,");
-            char ipAddress[NSAPI_IP_SIZE];
-            _at.read_string(ipAddress, sizeof(ipAddress));
-            if (address.set_ip_address(ipAddress)) {
-                if (_dns_version == NSAPI_UNSPEC || _dns_version == address.get_ip_version()) {
-                    return true;
-                }
-            }
-        }
+		_at.resp_start("+CDNSGIP: 1,");
+		_at.skip_param();
+		char ipAddress[NSAPI_IP_SIZE];
+		_at.read_string(ipAddress, sizeof(ipAddress));
+		if (address.set_ip_address(ipAddress)) {
+			if (_dns_version == NSAPI_UNSPEC || _dns_version == address.get_ip_version()) {
+				return true;
+			}
+		}
     }
     return false;
 }
