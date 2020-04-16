@@ -49,14 +49,6 @@ NetworkStack *SIMCOM_HERACLES224G_CellularContext::get_stack()
 }
 #endif // #if !NSAPI_PPP_AVAILABLE
 
-void SIMCOM_HERACLES224G_CellularContext::activate_context()
-{
-    tr_info("Activate PDP context %d", _cid);
-
-    if (_at.at_cmd_discard("+CGACT", "=", "%d,%d", 1, _cid) == NSAPI_ERROR_OK) {
-        _is_context_activated = true;
-    }
-}
 
 void SIMCOM_HERACLES224G_CellularContext::deactivate_context()
 {
