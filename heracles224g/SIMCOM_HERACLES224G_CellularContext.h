@@ -30,7 +30,6 @@ protected:
     virtual NetworkStack *get_stack();
 #endif // #if !NSAPI_PPP_AVAILABLE
     virtual void deactivate_context();
-    virtual void activate_context();
     virtual bool get_context();
 };
 
