@@ -33,7 +33,14 @@ protected:
     virtual void deactivate_context();
     virtual bool get_context();
 private:
+    void set_cid(int cid);
     nsapi_error_t context_authentication();
+    nsapi_error_t do_activate_context();
+	virtual void activate_context();
+	nsapi_error_t find_and_activate_context();
+	nsapi_error_t activate_ip_context();
+	void check_and_deactivate_context();
+	void delete_current_context();
 };
 
 } /* namespace mbed */
