@@ -82,6 +82,8 @@ void SIMCOM_HERACLES224G_CellularContext::do_connect()
 				_cb_data.error = _at.get_last_error();
 
 				if (_cb_data.error == NSAPI_ERROR_OK) {
+					// it's necessary to setup module for the future tcp/ip application
+					// similar to AT+CGADDR command to get ip address
 					_at.cmd_start("AT+CIFSR");
 					_at.cmd_stop();
 					//ignore response
