@@ -47,6 +47,72 @@ NetworkStack *SIMCOM_HERACLES224G_CellularContext::get_stack()
 
     return _stack;
 }
+
+
+void SIMCOM_HERACLES224G_CellularContext::do_connect()
+{
+	int gprs_service = 0;
+	bool context = false;
+	_cb_data.error = NSAPI_ERROR_NO_CONNECTION;
+
+    if (!_is_context_active) {
+        _cb_data.error = do_activate_context();
+    } else {
+        _cb_data.error = NSAPI_ERROR_OK;
+    }
+
+	if (_cb_data.error == NSAPI_ERROR_OK) {
+		_at.lock();
+		_cb_data.error = NSAPI_ERROR_NO_CONNECTION;
+		_at.cmd_start_stop("+CGATT", "?");
+		_at.resp_start("+CGATT: ");
+		gprs_service = _at.read_int();
+		_at.resp_stop();
+		if (gprs_service == 1) {
+			// gprs service is attached: define context
+			_cb_data.error = context_authentication();
+			if (_cb_data.error == NSAPI_ERROR_OK) {
+				// bring up connection
+				_at.set_at_timeout(60000);
+				_at.cmd_start("AT+CIICR");
+				_at.cmd_stop();
+				_at.resp_start();
+				_at.set_stop_tag("OK");
+				_at.restore_at_timeout();
+
+				_cb_data.error = _at.get_last_error();
+
+				if (_cb_data.error == NSAPI_ERROR_OK) {
+					_at.cmd_start("AT+CIFSR");
+					_at.cmd_stop();
+					//ignore response
+					_cb_data.error = _at.get_last_error();
+					_is_connected = true;
+					_connect_status = NSAPI_STATUS_GLOBAL_UP;
+				}
+
+			}
+		}
+		_at.unlock();
+
+		if (_status_cb) {
+			_status_cb(NSAPI_EVENT_CONNECTION_STATUS_CHANGE, _connect_status);
+		}
+	}
+
+//    if (_cb_data.error != NSAPI_ERROR_OK) {
+//        // If new PSD context was created and failed to activate, delete it
+//        if (_new_context_set) {
+//            disconnect_modem_stack();
+//        }
+//        _connect_status = NSAPI_STATUS_DISCONNECTED;
+//    } else {
+//        _connect_status = NSAPI_STATUS_GLOBAL_UP;
+//    }
+
+}
+
+
 #endif // #if !NSAPI_PPP_AVAILABLE
 
 

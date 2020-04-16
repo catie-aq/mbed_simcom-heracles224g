@@ -28,6 +28,7 @@ public:
 protected:
 #if !NSAPI_PPP_AVAILABLE
     virtual NetworkStack *get_stack();
+    virtual void do_connect();
 #endif // #if !NSAPI_PPP_AVAILABLE
     virtual void deactivate_context();
     virtual bool get_context();
