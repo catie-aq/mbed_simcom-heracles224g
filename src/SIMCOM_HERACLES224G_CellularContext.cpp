@@ -130,6 +130,150 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularContext::context_authentication()
 #endif // #if !NSAPI_PPP_AVAILABLE
 
 
+nsapi_error_t SIMCOM_HERACLES224G_CellularContext::do_activate_context()
+{
+    if (_nonip_req && _cp_in_use) {
+        return activate_non_ip_context();
+    }
+
+    // In IP case but also when Non-IP is requested and
+    // control plane optimization is not established -> activate ip context
+    _nonip_req = false;
+    return activate_ip_context();
+}
+
+nsapi_error_t SIMCOM_HERACLES224G_CellularContext::activate_ip_context()
+{
+    nsapi_error_t ret = find_and_activate_context();
+#if !NSAPI_PPP_AVAILABLE
+    if (ret == NSAPI_ERROR_OK) {
+        pdpContextList_t params_list;
+        if (get_pdpcontext_params(params_list) == NSAPI_ERROR_OK) {
+            pdpcontext_params_t *pdp = params_list.get_head();
+            while (pdp) {
+                SocketAddress addr;
+                if (addr.set_ip_address(pdp->dns_secondary_addr)) {
+                    nsapi_addr_t taddr = addr.get_addr();
+                    for (int i = 0; i < ((taddr.version == NSAPI_IPv6) ? NSAPI_IPv6_BYTES : NSAPI_IPv4_BYTES); i++) {
+                        if (taddr.bytes[i] != 0) { // check the address is not all zero
+                            tr_info("DNS secondary %s", pdp->dns_secondary_addr);
+                            char ifn[5]; // "ce" + two digit _cid + zero
+                            add_dns_server(addr, get_interface_name(ifn));
+                            break;
+                        }
+                    }
+                }
+                if (addr.set_ip_address(pdp->dns_primary_addr)) {
+                    nsapi_addr_t taddr = addr.get_addr();
+                    for (int i = 0; i < ((taddr.version == NSAPI_IPv6) ? NSAPI_IPv6_BYTES : NSAPI_IPv4_BYTES); i++) {
+                        if (taddr.bytes[i] != 0) { // check the address is not all zero
+                            tr_info("DNS primary %s", pdp->dns_primary_addr);
+                            char ifn[5]; // "ce" + two digit _cid + zero
+                            add_dns_server(addr, get_interface_name(ifn));
+                            break;
+                        }
+                    }
+                }
+                pdp = pdp->next;
+            }
+        }
+    }
+#endif
+    return ret;
+}
+
+void SIMCOM_HERACLES224G_CellularContext::activate_context()
+{
+    tr_info("Activate PDP context %d", _cid);
+    _at.at_cmd_discard("+CGACT", "=1,", "%d", _cid);
+    if (_at.get_last_error() == NSAPI_ERROR_OK) {
+        _is_context_activated = true;
+    }
+}
+
+nsapi_error_t SIMCOM_HERACLES224G_CellularContext::find_and_activate_context()
+{
+    _at.lock();
+
+    nsapi_error_t err = NSAPI_ERROR_OK;
+
+    // try to find or create context of suitable type
+    if (get_context()) {
+#if NSAPI_PPP_AVAILABLE
+        _at.unlock();
+        // in PPP we don't activate any context but leave it to PPP stack
+        return err;
+#else
+        // try to authenticate user before activating or modifying context
+        err = do_user_authentication();
+#endif // NSAPI_PPP_AVAILABLE
+    } else {
+        err = NSAPI_ERROR_NO_CONNECTION;
+    }
+
+    if (err != NSAPI_ERROR_OK) {
+        tr_error("Failed to activate network context! (%d)", err);
+    } else if (!(_nonip_req && _cp_in_use) && !get_stack()) {
+        // do check for stack to validate that we have support for stack
+        tr_error("No cellular stack!");
+        err = NSAPI_ERROR_UNSUPPORTED;
+    }
+
+    _is_context_active = false;
+    _is_context_activated = false;
+
+    if (err == NSAPI_ERROR_OK) {
+        _is_context_active = _nw->is_active_context(NULL, _cid);
+
+        if (!_is_context_active) {
+            activate_context();
+        }
+
+        err = (_at.get_last_error() == NSAPI_ERROR_OK) ? NSAPI_ERROR_OK : NSAPI_ERROR_NO_CONNECTION;
+    }
+
+    // If new PDP context was created and failed to activate, delete it
+    if (err != NSAPI_ERROR_OK && _new_context_set) {
+        delete_current_context();
+    } else if (err == NSAPI_ERROR_OK) {
+        _is_context_active = true;
+    }
+
+    _at.unlock();
+
+    return err;
+}
+
+void SIMCOM_HERACLES224G_CellularContext::set_cid(int cid)
+{
+    _cid = cid;
+    if (_stack) {
+        static_cast<AT_CellularStack *>(_stack)->set_cid(_cid);
+    }
+}
+
+// PDP Context handling
+void SIMCOM_HERACLES224G_CellularContext::delete_current_context()
+{
+    if (_cid <= 0) {
+        return;
+    }
+    tr_info("Delete context %d", _cid);
+    _at.clear_error();
+
+    _at.at_cmd_discard("+CGDCONT", "=", "%d", _cid);
+
+    if (_at.get_last_error() == NSAPI_ERROR_OK) {
+        set_cid(-1);
+
+        _new_context_set = false;
+    }
+
+    // there is nothing we can do if deleting of context fails. No point reporting an error (for example disconnect).
+    _at.clear_error();
+}
+
+
 void SIMCOM_HERACLES224G_CellularContext::deactivate_context()
 {
     _at.at_cmd_discard("+CGACT", "=", "%d,%d", 0, _cid);
