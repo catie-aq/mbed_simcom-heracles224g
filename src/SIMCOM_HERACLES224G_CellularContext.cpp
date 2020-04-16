@@ -111,6 +111,21 @@ void SIMCOM_HERACLES224G_CellularContext::do_connect()
 
 }
 
+nsapi_error_t SIMCOM_HERACLES224G_CellularContext::context_authentication()
+{
+    if (_pwd && _uname) {
+        if (_at.at_cmd_discard("+CSTT", "=", "\"%s\",\"%s\",\"%s\"",
+                               _apn, _uname, _pwd) != NSAPI_ERROR_OK) {
+            return NSAPI_ERROR_AUTH_FAILURE;
+        }
+    } else {
+        if (_at.at_cmd_discard("+CSTT", "=", "\"%s\"", _apn) != NSAPI_ERROR_OK) {
+            return NSAPI_ERROR_AUTH_FAILURE;
+        }
+    }
+
+    return NSAPI_ERROR_OK;
+}
 
 #endif // #if !NSAPI_PPP_AVAILABLE
 

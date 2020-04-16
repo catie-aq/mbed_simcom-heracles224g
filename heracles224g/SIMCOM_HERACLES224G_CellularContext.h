@@ -32,6 +32,8 @@ protected:
 #endif // #if !NSAPI_PPP_AVAILABLE
     virtual void deactivate_context();
     virtual bool get_context();
+private:
+    nsapi_error_t context_authentication();
 };
 
 } /* namespace mbed */
