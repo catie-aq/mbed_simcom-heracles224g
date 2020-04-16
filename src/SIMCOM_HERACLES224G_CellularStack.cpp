@@ -173,6 +173,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close(nsapi_socket_t han
 
 	if (_tcpip_mode == SINGLE_TCP) {
 		_at.cmd_start("+CIPCLOSE");
+		_at.cmd_stop();
 	} else {
 		int request_connect_id = find_socket_index(socket);
 		err = _at.at_cmd_discard("+CIPCLOSE", "=", "%d", request_connect_id);
@@ -593,8 +594,10 @@ bool SIMCOM_HERACLES224G_CellularStack::read_dnsgip(SocketAddress &address, nsap
 		_at.skip_param();
 		char ipAddress[NSAPI_IP_SIZE];
 		_at.read_string(ipAddress, sizeof(ipAddress));
+		_at.resp_stop();
 		if (address.set_ip_address(ipAddress)) {
 			if (_dns_version == NSAPI_UNSPEC || _dns_version == address.get_ip_version()) {
+				_at.unlock();
 				return true;
 			}
 		}
