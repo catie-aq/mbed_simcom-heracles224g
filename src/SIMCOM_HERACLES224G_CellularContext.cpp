@@ -73,15 +73,7 @@ void SIMCOM_HERACLES224G_CellularContext::do_connect()
 			_cb_data.error = context_authentication();
 			if (_cb_data.error == NSAPI_ERROR_OK) {
 				// bring up connection
-				_at.set_at_timeout(60000);
-				_at.cmd_start("AT+CIICR");
-				_at.cmd_stop();
-				_at.resp_start();
-				_at.set_stop_tag("OK");
-				_at.restore_at_timeout();
-
-				_cb_data.error = _at.get_last_error();
-
+				_cb_data.error = bring_up_wireless_connection();
 				if (_cb_data.error == NSAPI_ERROR_OK) {
 					// it's necessary to setup module for the future tcp/ip application
 					// similar to AT+CGADDR command to get ip address
@@ -112,6 +104,18 @@ void SIMCOM_HERACLES224G_CellularContext::do_connect()
 //        _connect_status = NSAPI_STATUS_GLOBAL_UP;
 //    }
 
+}
+
+nsapi_error_t SIMCOM_HERACLES224G_CellularContext::bring_up_wireless_connection()
+{
+	_at.set_at_timeout(60000);
+	_at.cmd_start("AT+CIICR");
+	_at.cmd_stop();
+	_at.resp_start();
+	_at.set_stop_tag("OK");
+	_at.restore_at_timeout();
+
+	return _at.get_last_error();
 }
 
 nsapi_error_t SIMCOM_HERACLES224G_CellularContext::context_authentication()
