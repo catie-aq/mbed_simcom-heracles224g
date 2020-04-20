@@ -34,6 +34,7 @@ protected:
     virtual bool get_context();
 private:
     nsapi_error_t bring_up_wireless_connection(void);
+    void get_local_ip_address(void);
     void set_cid(int cid);
     nsapi_error_t context_authentication(void);
     nsapi_error_t do_activate_context(void);
