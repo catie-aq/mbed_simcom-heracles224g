@@ -74,7 +74,7 @@ void SIMCOM_HERACLES224G_CellularContext::do_connect()
 				// bring up connection
 				_cb_data.error = bring_up_wireless_connection();
 				if (_cb_data.error == NSAPI_ERROR_OK) {
-					get_local_ip_adresss();
+					get_local_ip_address();
 					_is_connected = true;
 					_connect_status = NSAPI_STATUS_GLOBAL_UP;
 				}
@@ -112,7 +112,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularContext::bring_up_wireless_connection(
 	return _at.get_last_error();
 }
 
-void SIMCOM_HERACLES224G_CellularContext::get_local_ip_adresss()
+void SIMCOM_HERACLES224G_CellularContext::get_local_ip_address()
 {
 	// it's necessary to setup module for the future tcp/ip application
 	// similar to AT+CGADDR command to get ip address
