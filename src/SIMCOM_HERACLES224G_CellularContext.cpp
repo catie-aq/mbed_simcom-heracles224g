@@ -103,23 +103,35 @@ void SIMCOM_HERACLES224G_CellularContext::do_connect()
 
 nsapi_error_t SIMCOM_HERACLES224G_CellularContext::bring_up_wireless_connection()
 {
+	nsapi_error_t err;
 	_at.set_at_timeout(60000);
-	_at.cmd_start("AT+CIICR");
-	_at.cmd_stop();
-	_at.resp_start();
 	_at.set_stop_tag("OK");
+	_at.cmd_start("AT+CIICR");
+	_at.cmd_stop_read_resp();
+	if (_at.consume_to_stop_tag()) {
+		tr_info("Bring up connection OK");
+		err = NSAPI_ERROR_OK;
+	} else {
+		tr_info("Bring up connection NOK");
+		err = NSAPI_ERROR_DEVICE_ERROR;
+	}
+	_at.resp_stop();
 	_at.restore_at_timeout();
-
-	return _at.get_last_error();
+	return err;
 }
 
 void SIMCOM_HERACLES224G_CellularContext::get_local_ip_address()
 {
+	char ip_addr[20] = {0};
 	// it's necessary to setup module for the future tcp/ip application
 	// similar to AT+CGADDR command to get ip address
 	_at.cmd_start("AT+CIFSR");
 	_at.cmd_stop();
 	//ignore response
+	_at.resp_start();
+	_at.read_string(ip_addr, sizeof(ip_addr));
+	tr_info("IP local CIFSR command %s", ip_addr);
+	_at.resp_stop();
 }
 
 nsapi_error_t SIMCOM_HERACLES224G_CellularContext::context_authentication()
