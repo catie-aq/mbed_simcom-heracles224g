@@ -62,7 +62,7 @@ static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
     2, // PROPERTY_SOCKET_COUNT
     1,  // PROPERTY_IP_TCP
     1,  // PROPERTY_IP_UDP
-    20,  // PROPERTY_AT_SEND_DELAY
+    500,  // PROPERTY_AT_SEND_DELAY
 };
 
 SIMCOM_HERACLES224G::SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr, bool active_high)
