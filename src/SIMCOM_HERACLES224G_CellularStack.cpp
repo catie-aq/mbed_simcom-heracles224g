@@ -70,8 +70,11 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
 
     _at.lock();
 
+	tr_info("socket info: ip: %s, port: %d", socket->localAddress.get_ip_address(), socket->localAddress.get_port());
+
 	if (_tcpip_mode ==  SINGLE_TCP) {
 	    if (socket->proto == NSAPI_TCP) {
+	    	tr_info("socket info: ip: %s, port: %d", socket->localAddress.get_ip_address(), socket->localAddress.get_port());
 			_at.at_cmd_discard("+CIPSTART", "=", "\"%s\",\"%s\",\"%d\"", "TCP",
 								socket->localAddress.get_ip_address(), socket->localAddress.get_port());
 
@@ -562,47 +565,46 @@ void SIMCOM_HERACLES224G_CellularStack::ip2dot(const SocketAddress &ip, char *do
 nsapi_error_t SIMCOM_HERACLES224G_CellularStack::gethostbyname(const char *host, SocketAddress *address,
                                                         nsapi_version_t version, const char *interface_name)
 {
-    (void) interface_name;
-    MBED_ASSERT(host);
-    MBED_ASSERT(address);
+    nsapi_error_t err = NSAPI_ERROR_DNS_FAILURE;
 
     _at.lock();
 
-//    if (_dns_callback) {
-//        _at.unlock();
-//        return NSAPI_ERROR_BUSY;
-//    }
-
-    if (!address->set_ip_address(host)) {
-        _at.set_at_timeout(5000); // not defined in the datasheet.
+    if (address->set_ip_address(host)) {
+    	err = NSAPI_ERROR_OK;
+    } else {
+		_at.set_at_timeout(10000); // not defined in the datasheet.
         _at.at_cmd_discard("+CDNSGIP", "=", "\"%s\"", host);
         _at.resp_start("+CDNSGIP: ");
-        _at.restore_at_timeout();
-        if (!read_dnsgip(*address, version)) {
-            _at.unlock();
-            return NSAPI_ERROR_DNS_FAILURE;
-        }
-    }
+		if (_at.info_resp()) {
+			if (read_dnsgip(*address, version)) {
+				err = NSAPI_ERROR_OK;
+			}
+		}
 
-    return _at.unlock_return_error();
+	}
+
+    _at.resp_stop();
+	_at.restore_at_timeout();
+    _at.unlock();
+
+    return err;
 }
 
 bool SIMCOM_HERACLES224G_CellularStack::read_dnsgip(SocketAddress &address, nsapi_version_t _dns_version)
 {
+	char ipAddress[NSAPI_IP_SIZE];
     if (_at.read_int() == 1) {
-        _at.skip_param();
-		_at.resp_start("+CDNSGIP: 1,");
+		//_at.resp_start("+CDNSGIP: 1,");
 		_at.skip_param();
-		char ipAddress[NSAPI_IP_SIZE];
 		_at.read_string(ipAddress, sizeof(ipAddress));
-		_at.resp_stop();
 		if (address.set_ip_address(ipAddress)) {
 			if (_dns_version == NSAPI_UNSPEC || _dns_version == address.get_ip_version()) {
-				_at.unlock();
+				tr_info("IP host address: %s", ipAddress);
 				return true;
 			}
 		}
     }
+    tr_info("error IP host address");
     return false;
 }
 
