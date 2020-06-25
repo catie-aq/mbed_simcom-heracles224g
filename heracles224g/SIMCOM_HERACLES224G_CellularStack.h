@@ -63,6 +63,9 @@ protected: // NetworkStack
     virtual nsapi_size_or_error_t socket_sendto(nsapi_socket_t handle, const SocketAddress &address,
                                                 const void *data, nsapi_size_t size);
 
+    virtual nsapi_size_or_error_t socket_send(nsapi_socket_t handle,
+                                              const void *data, nsapi_size_t size);
+
     virtual nsapi_size_or_error_t socket_recv(nsapi_socket_t handle,
                                                   void *data, nsapi_size_t size);
 
@@ -88,7 +91,7 @@ private:
     // URC handler for socket being closed
     void urc_qiurc_closed();
 
-    void handle_open_socket_response(int &modem_connect_id, int &err, bool tlssocket);
+    void handle_open_socket_response(int &err);
 
     bool read_dnsgip(SocketAddress &address, nsapi_version_t _dns_version);
 

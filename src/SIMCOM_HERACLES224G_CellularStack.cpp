@@ -71,13 +71,13 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
 
     _at.lock();
 
-	tr_info("socket info: ip: %s, port: %d", socket->localAddress.get_ip_address(), socket->localAddress.get_port());
+	tr_info("socket info: ip: %s, port: %d", address.get_ip_address(), address.get_port());
 
 	if (_tcpip_mode ==  SINGLE_TCP) {
 	    if (socket->proto == NSAPI_TCP) {
-	    	tr_info("socket info: ip: %s, port: %d", socket->localAddress.get_ip_address(), socket->localAddress.get_port());
-			_at.at_cmd_discard("+CIPSTART", "=", "\"%s\",\"%s\",\"%d\"", "TCP",
-								socket->localAddress.get_ip_address(), socket->localAddress.get_port());
+	    	tr_info("socket info: ip: %s, port: %d", address.get_ip_address(), address.get_port());
+			err = _at.at_cmd_discard("+CIPSTART", "=", "\"%s\",\"%s\",\"%d\"", "TCP",
+					address.get_ip_address(), address.get_port());
 
 			handle_open_socket_response(modem_connect_id, err, false);
 			if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
@@ -88,11 +88,10 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
 				}
 			}
 		} else {
-			_at.at_cmd_discard("+CIPSTART", "=", "\"%s\",\"%s\",\"%d\"", "UDP",
-								socket->localAddress.get_ip_address(), socket->localAddress.get_port());
+			err =_at.at_cmd_discard("+CIPSTART", "=", "\"%s\",\"%s\",\"%d\"", "UDP",
+					address.get_ip_address(), address.get_port());
 
-			handle_open_socket_response(modem_connect_id, err, false);
-
+			handle_open_socket_response(err);
 
 			if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
 				if (err == HERACLES224G_SOCKET_BIND_FAIL) {
@@ -101,17 +100,15 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
 					return NSAPI_ERROR_PARAMETER;
 				}
 			}
+
 		}
 
-	    nsapi_error_t ret_val = _at.get_last_error();
-	    _at.unlock();
+	    if (err == NSAPI_ERROR_OK) {
+	        socket->remoteAddress = address;
+	        socket->connected = true;
+	        return NSAPI_ERROR_OK;
+	    }
 
-	    if ((!err) && (ret_val == NSAPI_ERROR_OK)) {
-			socket->id = request_connect_id;
-			socket->remoteAddress = address;
-			socket->connected = true;
-			return NSAPI_ERROR_OK;
-		}
 	} else {
 		int request_connect_id = find_socket_index(socket);
 
@@ -120,9 +117,9 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
 
 	    if (socket->proto == NSAPI_TCP) {
 			_at.at_cmd_discard("+CIPSTART", "=", "\"%d\",\"%s\",\"%s\",\"%d\"", request_connect_id, "TCP",
-								socket->localAddress.get_ip_address(), socket->localAddress.get_port());
+									address.get_ip_address(), address.get_port());
 
-			handle_open_socket_response(modem_connect_id, err, false);
+			handle_open_socket_response(err);
 
 			if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
 				if (err == HERACLES224G_SOCKET_BIND_FAIL) {
@@ -133,9 +130,9 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
 			}
 	    } else {
 	    	_at.at_cmd_discard("+CIPSTART", "=", "\"%d\",\"%s\",\"%s\",\"%d\"", request_connect_id, "UDP",
-								socket->localAddress.get_ip_address(), socket->localAddress.get_port());
+	    			address.get_ip_address(), address.get_port());
 
-			handle_open_socket_response(modem_connect_id, err, false);
+			handle_open_socket_response(err);
 
 			if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
 				if (err == HERACLES224G_SOCKET_BIND_FAIL) {
@@ -162,7 +159,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
 	    }
 	}
 
-    return err;
+    return NSAPI_ERROR_NO_CONNECTION;
 }
 
 nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close(nsapi_socket_t handle)
@@ -190,6 +187,58 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close(nsapi_socket_t han
 	_at.unlock();
 
 	return err;
+}
+
+nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_send(nsapi_socket_t handle,
+                                              const void *data, nsapi_size_t size)
+{
+	 CellularSocket *socket = (CellularSocket *)handle;
+
+	 if (size > HERACLES224G_MAX_SEND_SIZE) {
+	 		return NSAPI_ERROR_PARAMETER;
+	 	}
+
+	if (_ip_ver_sendto != socket->localAddress.get_ip_version()) {
+		_ip_ver_sendto =  socket->localAddress.get_ip_version();
+		socket_close_impl(socket->id);
+		create_socket_impl(socket);
+	}
+
+	_at.lock();
+
+	if (_tcpip_mode == SINGLE_TCP) {
+		// Send
+		_at.cmd_start_stop("+CIPSEND", "=", "%d", size);
+		_at.resp_start(">");
+		_at.write_bytes((uint8_t *)data, size);
+	} else {
+		// Send
+		_at.cmd_start_stop("+CIPSEND", "=", "%d%d", socket->id, size);
+		_at.resp_start(">");
+		_at.write_bytes((uint8_t *)data, size);
+
+	}
+
+	// Possible responses are SEND OK, DATA ACCEPT or CME ERROR.
+	char response[16];
+	response[0] = '\0';
+	_at.resp_start();
+	_at.read_string(response, sizeof(response));
+	_at.resp_stop();
+
+	if (_data_transmitting_mode == NORMAL) {
+		if (strstr(response, "SEND OK") == 0) {
+			return NSAPI_ERROR_DEVICE_ERROR;
+		}
+	} else {
+		if (strstr(response, "DATA ACCEPT") == 0) {
+			return NSAPI_ERROR_DEVICE_ERROR;
+		}
+	}
+
+	_at.unlock();
+
+	return NSAPI_ERROR_OK;
 }
 
 nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_sendto(nsapi_socket_t handle, const SocketAddress &address,
@@ -321,20 +370,23 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close_impl(int sock_id)
     return err;
 }
 
-void SIMCOM_HERACLES224G_CellularStack::handle_open_socket_response(int &modem_connect_id, int &err, bool tlssocket)
+void SIMCOM_HERACLES224G_CellularStack::handle_open_socket_response(int &err)
 {
 	nsapi_error_t error;
-    // OK
+
+	// OK
     // CIPSTART -> should be handled as URC?
-    _at.set_at_timeout(HERACLES224G_CREATE_SOCKET_TIMEOUT);
-
-	_at.resp_start("CONNECT OK");
-
-    _at.restore_at_timeout();
-    _at.resp_stop();
-    _at.restore_at_timeout();
-
-    err = _at.get_last_error();
+    _at.set_at_timeout(10000); // HERACLES224G_CREATE_SOCKET_TIMEOUT
+    _at.set_stop_tag("CONNECT OK");
+    _at.resp_start();
+	if (_at.consume_to_stop_tag()) {
+		tr_info("CONNECT OK");
+		err = NSAPI_ERROR_OK;
+	} else {
+		err = NSAPI_ERROR_DEVICE_ERROR;
+	}
+	_at.resp_stop();
+	_at.restore_at_timeout();
 
     _at.resp_stop();
     _at.restore_at_timeout();
@@ -366,7 +418,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
 									   (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
 									   socket->localAddress.get_port());
 
-					handle_open_socket_response(modem_connect_id, err, false);
+					handle_open_socket_response(err);
 
 					if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
 						if (err == HERACLES224G_SOCKET_BIND_FAIL) {
@@ -384,7 +436,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
 								   (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
 								   socket->localAddress.get_port());
 
-				handle_open_socket_response(modem_connect_id, err, false);
+				handle_open_socket_response(err);
 
 				if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
 					if (err == HERACLES224G_SOCKET_BIND_FAIL) {
@@ -405,7 +457,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
 									   (_ip_ver_sendto == NSAPI_IPv4) ? "127.0.0.1" : "0:0:0:0:0:0:0:1",
 									   socket->localAddress.get_port());
 
-					handle_open_socket_response(modem_connect_id, err, false);
+					handle_open_socket_response(err);
 
 					if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
 						if (err == HERACLES224G_SOCKET_BIND_FAIL) {
@@ -424,7 +476,7 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::create_socket_impl(CellularSock
 								   socket->localAddress.get_port());
 
 
-				handle_open_socket_response(modem_connect_id, err, false);
+				handle_open_socket_response(err);
 
 				if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
 					if (err == HERACLES224G_SOCKET_BIND_FAIL) {
@@ -471,27 +523,32 @@ nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_sendto_impl(Cell
     	// Send
 		_at.cmd_start_stop("+CIPSEND", "=", "%d", size);
 		_at.resp_start(">");
+		_at.resp_stop();
 		_at.write_bytes((uint8_t *)data, size);
-		_at.resp_start();
     } else {
 		// Send
     	_at.cmd_start_stop("+CIPSEND", "=", "%d%d", socket->id, size);
 		_at.resp_start(">");
+		_at.resp_stop();
 		_at.write_bytes((uint8_t *)data, size);
-		_at.resp_start();
     }
 
     // Possible responses are SEND OK, DATA ACCEPT or CME ERROR.
     char response[16];
     response[0] = '\0';
-	_at.read_string(response, sizeof(response));
-	_at.resp_stop();
+    _at.set_at_timeout(1000);
 
 	if (_data_transmitting_mode == NORMAL) {
+		_at.resp_start("SEND OK");
+		_at.read_string(response, sizeof(response));
+		_at.resp_stop();
 		if (strstr(response, "SEND OK") == 0) {
 			return NSAPI_ERROR_DEVICE_ERROR;
 		}
 	} else {
+		_at.resp_start("DATA ACCEPT");
+		_at.read_string(response, sizeof(response));
+		_at.resp_stop();
 		if (strstr(response, "DATA ACCEPT") == 0) {
 			return NSAPI_ERROR_DEVICE_ERROR;
 		}
