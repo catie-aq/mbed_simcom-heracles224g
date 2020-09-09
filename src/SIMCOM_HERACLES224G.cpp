@@ -29,10 +29,6 @@ using namespace events;
 
 #define DEVICE_READY_URC "CPIN:"
 
-#if !defined(MBED_CONF_SIMCOM_HERACLES224G_PWR)
-#define MBED_CONF_SIMCOM_HERACLES224G_PWR    NC
-#endif
-
 #if !defined(MBED_CONF_SIMCOM_HERACLES224G_TX)
 #define MBED_CONF_SIMCOM_HERACLES224G_TX    NC
 #endif
@@ -43,6 +39,14 @@ using namespace events;
 
 #if !defined(MBED_CONF_SIMCOM_HERACLES224G_POLARITY)
 #define MBED_CONF_SIMCOM_HERACLES224G_POLARITY    1 // active high
+#endif
+
+#if !defined(MBED_CONF_QUECTEL_BG96_RST)
+#define MBED_CONF_QUECTEL_BG96_RST    NC
+#endif
+
+#if !defined(MBED_CONF_SIMCOM_HERACLES224G_PWR)
+#define MBED_CONF_SIMCOM_HERACLES224G_PWR    NC
 #endif
 
 static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
@@ -75,6 +79,7 @@ SIMCOM_HERACLES224G::SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key, bool a
 	  _rst(rst, !_active_high)
 {
     set_cellular_properties(cellular_properties);
+    soft_power_on();
 }
 
 nsapi_error_t SIMCOM_HERACLES224G::init()
@@ -125,7 +130,7 @@ nsapi_error_t SIMCOM_HERACLES224G::soft_power_on()
 	   tr_info("SIMCOM_HERACLES224G::soft_power_on");
 	   // check if modem was powered on already
 	   if (!wake_up()) {
-		   if (!wake_up(true)) {
+		   if (!wake_up(false)) {
 			   tr_error("Modem not responding");
 			   soft_power_off();
 			   return NSAPI_ERROR_DEVICE_ERROR;
