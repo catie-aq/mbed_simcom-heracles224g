@@ -25,12 +25,16 @@
             "help": "Provide as default CellularDevice [true/false]",
             "value": false
         },
-        "pwr-key" : {
-            "help": "PWR key pin for power on/off module",
+        "pwr": {
+            "help": "Power control pin",
             "value": null
         },
-        "rst" : {
-            "help": "RST pin to reboot module",
+        "rst": {
+            "help": "Reset control pin",
+            "value": null
+        },
+        "polarity": {
+            "help": "Pin polarity, 1 = Active high, 0 = Active low",
             "value": null
         }
     }
