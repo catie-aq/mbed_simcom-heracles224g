@@ -49,6 +49,10 @@ using namespace events;
 #define MBED_CONF_SIMCOM_HERACLES224G_PWR    NC
 #endif
 
+namespace {
+#define AUTOBAUD 0 // if the result of AT+IPR? is different than 0 (default value = 0)
+}
+
 static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
     AT_CellularNetwork::RegistrationModeLAC,    // C_EREG
     AT_CellularNetwork::RegistrationModeLAC,    // C_GREG
@@ -79,19 +83,6 @@ SIMCOM_HERACLES224G::SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key, bool a
 	  _rst(rst, !_active_high)
 {
     set_cellular_properties(cellular_properties);
-    soft_power_on();
-}
-
-nsapi_error_t SIMCOM_HERACLES224G::init()
-{
-    nsapi_error_t err = AT_CellularDevice::init();
-    if (err != NSAPI_ERROR_OK) {
-        return err;
-    }
-    _at.lock();
-
-
-    return _at.unlock_return_error();
 }
 
 #if MBED_CONF_SIMCOM_HERACLES224G_PROVIDE_DEFAULT
@@ -105,6 +96,7 @@ CellularDevice *CellularDevice::get_default_instance()
     static SIMCOM_HERACLES224G device(&serial,
                               MBED_CONF_SIMCOM_HERACLES224G_PWR,
                               MBED_CONF_SIMCOM_HERACLES224G_POLARITY);
+
     return &device;
 }
 #endif
@@ -122,6 +114,46 @@ AT_CellularContext *SIMCOM_HERACLES224G::create_context_impl(ATHandler &at, cons
 void SIMCOM_HERACLES224G::set_ready_cb(Callback<void()> callback)
 {
     _at.set_urc_handler(DEVICE_READY_URC, callback);
+}
+
+nsapi_error_t SIMCOM_HERACLES224G::init()
+{
+    nsapi_error_t err = AT_CellularDevice::init();
+    if (err != NSAPI_ERROR_OK) {
+        return err;
+    }
+    _at.lock();
+
+    return _at.unlock_return_error();
+ }
+
+nsapi_error_t SIMCOM_HERACLES224G::is_ready()
+{
+
+	AT_CellularDevice::setup_at_handler();
+	return AT_CellularDevice::is_ready();
+	//return NSAPI_ERROR_OK;
+}
+
+nsapi_error_t SIMCOM_HERACLES224G::hard_power_off()
+{
+    _pwr_key = !_active_high;
+    ThisThread::sleep_for(10s);
+
+    return NSAPI_ERROR_OK;
+}
+
+nsapi_error_t SIMCOM_HERACLES224G::hard_power_on()
+{
+	// TODO: check the pins status
+	if (_pwr_key.is_connected()) {
+		tr_info("SIMCOM_HERACLES224G::hard power on");
+		press_button(_pwr_key, 1000);
+		ThisThread::sleep_for(5s);
+		return NSAPI_ERROR_OK;
+	}
+
+    return NSAPI_ERROR_DEVICE_ERROR;
 }
 
 nsapi_error_t SIMCOM_HERACLES224G::soft_power_on()
@@ -144,12 +176,18 @@ nsapi_error_t SIMCOM_HERACLES224G::soft_power_on()
 nsapi_error_t SIMCOM_HERACLES224G::soft_power_off()
 {
     _at.lock();
+    _at.set_at_timeout(2000);
     _at.cmd_start("AT+CPOWD=1");
-    _at.cmd_stop_read_resp();
-    if (_at.get_last_error() != NSAPI_ERROR_OK) {
+    _at.resp_start();
+    _at.set_stop_tag("NORMAL POWER DOWN");
+    bool pwr = _at.consume_to_stop_tag();
+    _at.restore_at_timeout();
+    _at.unlock();
+    if (!pwr) {
         tr_warn("Force modem off");
         if (_pwr_key.is_connected()) {
             press_button(_pwr_key, 1500); // Heracles_Hardware_Design_V1.02: Power off signal at least 1500 ms
+            return NSAPI_ERROR_OK;
         }
     }
     return _at.unlock_return_error();
@@ -176,7 +214,16 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
     nsapi_error_t err = _at.get_last_error();
     _at.restore_at_timeout();
     _at.unlock();
-    // modem is not responding, power it on
+
+    _at.lock();
+    _at.flush();
+    _at.set_at_timeout(30);
+    _at.cmd_start("AT");
+    _at.cmd_stop_read_resp();
+    err = _at.get_last_error();
+    _at.restore_at_timeout();
+    _at.unlock();
+
     // modem is not responding, power it on
      if (err != NSAPI_ERROR_OK) {
          if (!reset) {
@@ -186,22 +233,43 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
              tr_warn("Reset modem");
              // TODO: implement rst pin in the HW design
              if (_rst.is_connected()) {
+            	 // According to Heracles_Hardware_Design_V1.02: t >= 150ms
                  press_button(_rst, 150);
              }
          }
+
+#if !AUTOBAUD
+         // default value: AT+IPR: 0 (autobaud)
+         // According to Heracles_Hardware_Design_V1.02: t >= 3s
+         ThisThread::sleep_for(10s);
+         // try again to send an AT command
          _at.lock();
+         _at.flush();
+         _at.set_at_timeout(30);
+         _at.cmd_start("AT");
+         _at.cmd_stop_read_resp();
+         err = _at.get_last_error();
+         _at.restore_at_timeout();
+         _at.unlock();
+         if (err != NSAPI_ERROR_OK) {
+        	 return false;
+         }
+#else
          // According to Heracles_Hardware_Design_V1.02, serial_port is active after 3s, but it seems to take over 5s
+         // This URC does not appear when autobauding function is active. (AT+IPR=x)
+         _at.lock();
          _at.set_at_timeout(5000);
          _at.resp_start();
          _at.set_stop_tag("RDY");
          bool rdy = _at.consume_to_stop_tag();
-         _at.set_stop_tag(OK);
          _at.restore_at_timeout();
          _at.unlock();
          if (!rdy) {
              return false;
          }
-     }
+#endif
+
+    }
     // sync to check that AT is really responsive and to clear garbage
     return _at.sync(500);
 }

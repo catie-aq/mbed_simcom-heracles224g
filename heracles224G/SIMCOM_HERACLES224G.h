@@ -43,6 +43,9 @@ public:
 
 protected: // AT_CellularDevice
     virtual nsapi_error_t init();
+    virtual nsapi_error_t is_ready();
+    virtual nsapi_error_t hard_power_on();
+    virtual nsapi_error_t hard_power_off();
     virtual nsapi_error_t soft_power_on();
     virtual nsapi_error_t soft_power_off();
     virtual AT_CellularNetwork *open_network_impl(ATHandler &at);
