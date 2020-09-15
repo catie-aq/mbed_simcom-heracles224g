@@ -116,23 +116,12 @@ void SIMCOM_HERACLES224G::set_ready_cb(Callback<void()> callback)
     _at.set_urc_handler(DEVICE_READY_URC, callback);
 }
 
-nsapi_error_t SIMCOM_HERACLES224G::init()
-{
-    nsapi_error_t err = AT_CellularDevice::init();
-    if (err != NSAPI_ERROR_OK) {
-        return err;
-    }
-    _at.lock();
-
-    return _at.unlock_return_error();
- }
-
 nsapi_error_t SIMCOM_HERACLES224G::is_ready()
 {
+	//TODO: send an AT command to check if the module is ready
+	// or read the hardware status pin;
 
-	AT_CellularDevice::setup_at_handler();
 	return AT_CellularDevice::is_ready();
-	//return NSAPI_ERROR_OK;
 }
 
 nsapi_error_t SIMCOM_HERACLES224G::hard_power_off()
@@ -149,7 +138,7 @@ nsapi_error_t SIMCOM_HERACLES224G::hard_power_on()
 	if (_pwr_key.is_connected()) {
 		tr_info("SIMCOM_HERACLES224G::hard power on");
 		press_button(_pwr_key, 1000);
-		ThisThread::sleep_for(5s);
+		ThisThread::sleep_for(10s);
 		return NSAPI_ERROR_OK;
 	}
 
@@ -158,7 +147,7 @@ nsapi_error_t SIMCOM_HERACLES224G::hard_power_on()
 
 nsapi_error_t SIMCOM_HERACLES224G::soft_power_on()
 {
-    if (_pwr_key.is_connected()) {
+    /*if (_pwr_key.is_connected()) {
 	   tr_info("SIMCOM_HERACLES224G::soft_power_on");
 	   // check if modem was powered on already
 	   if (!wake_up()) {
@@ -168,7 +157,7 @@ nsapi_error_t SIMCOM_HERACLES224G::soft_power_on()
 			   return NSAPI_ERROR_DEVICE_ERROR;
 		   }
 	   }
-   }
+   }*/
 
     return NSAPI_ERROR_OK;
 }
@@ -208,16 +197,17 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
     // check if modem is already ready
     _at.lock();
     _at.flush();
-    _at.set_at_timeout(30);
+    _at.set_at_timeout(100);
     _at.cmd_start("AT");
     _at.cmd_stop_read_resp();
     nsapi_error_t err = _at.get_last_error();
     _at.restore_at_timeout();
     _at.unlock();
 
+    // check if modem is already ready
     _at.lock();
     _at.flush();
-    _at.set_at_timeout(30);
+    _at.set_at_timeout(100);
     _at.cmd_start("AT");
     _at.cmd_stop_read_resp();
     err = _at.get_last_error();
