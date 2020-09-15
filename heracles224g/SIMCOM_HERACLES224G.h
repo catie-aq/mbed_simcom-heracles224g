@@ -42,7 +42,6 @@ public:
     SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key = NC, bool active_high = true, PinName rst = NC);
 
 protected: // AT_CellularDevice
-    virtual nsapi_error_t init();
     virtual nsapi_error_t is_ready();
     virtual nsapi_error_t hard_power_on();
     virtual nsapi_error_t hard_power_off();
