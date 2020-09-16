@@ -76,11 +76,12 @@ static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
     20,  // PROPERTY_AT_SEND_DELAY
 };
 
-SIMCOM_HERACLES224G::SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key, bool active_high, PinName rst)
+SIMCOM_HERACLES224G::SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key, bool active_high, PinName rst, PinName status)
     : AT_CellularDevice(fh),
       _active_high(active_high),
       _pwr_key(pwr_key, !_active_high),
-	  _rst(rst, !_active_high)
+	  _rst(rst, !_active_high),
+	  _status(status)
 {
     set_cellular_properties(cellular_properties);
 }
@@ -120,8 +121,25 @@ nsapi_error_t SIMCOM_HERACLES224G::is_ready()
 {
 	//TODO: send an AT command to check if the module is ready
 	// or read the hardware status pin;
+	if (_status.is_connected()) {
+		if (_status == 1) {
+			return NSAPI_ERROR_OK;
+		}
+		return NSAPI_ERROR_DEVICE_ERROR;
+	}
 
-	return AT_CellularDevice::is_ready();
+	_at.lock();
+	_at.at_cmd_discard("", "");
+    // we need to do this twice because for example after data mode the first 'AT' command will give modem a
+	// stimulus that we are back to command mode.
+	_at.clear_error();
+	_at.flush();
+	_at.set_at_timeout(100);
+	_at.cmd_start("AT");
+	_at.cmd_stop_read_resp();
+	_at.restore_at_timeout();
+
+	return _at.unlock_return_error();
 }
 
 nsapi_error_t SIMCOM_HERACLES224G::hard_power_off()
@@ -134,7 +152,13 @@ nsapi_error_t SIMCOM_HERACLES224G::hard_power_off()
 
 nsapi_error_t SIMCOM_HERACLES224G::hard_power_on()
 {
-	// TODO: check the pins status
+	if (_satus.is_connected()) {
+		// check if the module is already ready
+		if (_status == 1) {
+			return NSAPI_ERROR_OK;
+		}
+	}
+	// need to turn the module on
 	if (_pwr_key.is_connected()) {
 		tr_info("SIMCOM_HERACLES224G::hard power on");
 		press_button(_pwr_key, 1000);
@@ -201,16 +225,6 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
     _at.cmd_start("AT");
     _at.cmd_stop_read_resp();
     nsapi_error_t err = _at.get_last_error();
-    _at.restore_at_timeout();
-    _at.unlock();
-
-    // check if modem is already ready
-    _at.lock();
-    _at.flush();
-    _at.set_at_timeout(100);
-    _at.cmd_start("AT");
-    _at.cmd_stop_read_resp();
-    err = _at.get_last_error();
     _at.restore_at_timeout();
     _at.unlock();
 

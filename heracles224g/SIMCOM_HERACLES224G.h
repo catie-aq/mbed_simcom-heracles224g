@@ -39,7 +39,7 @@ public:
      * Constructs the SIMCOM Heracles224G series driver. It is mandatory to provide
      * a FileHandle object, the power pin and the polarity of the pin.
      */
-    SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key = NC, bool active_high = true, PinName rst = NC);
+    SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key = NC, bool active_high = true, PinName rst = NC, PinName status = NC);
 
 protected: // AT_CellularDevice
     virtual nsapi_error_t is_ready();
@@ -55,8 +55,9 @@ private:
     void press_button(DigitalOut &button, uint32_t timeout);
     bool wake_up(bool reset = false);
     bool _active_high;
-    DigitalOut _pwr_key;
-    DigitalOut _rst;
+    DigitalOut	_pwr_key;
+    DigitalOut	_rst;
+    DigitalIn	_status;
 };
 } // namespace mbed
 #endif /* CELLULAR_TARGETS_SIMCOM_HERACLES224G_SIMCOM_HERACLES224G_H_ */
