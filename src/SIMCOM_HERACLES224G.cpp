@@ -152,7 +152,7 @@ nsapi_error_t SIMCOM_HERACLES224G::hard_power_off()
 
 nsapi_error_t SIMCOM_HERACLES224G::hard_power_on()
 {
-	if (_satus.is_connected()) {
+	if (_status.is_connected()) {
 		// check if the module is already ready
 		if (_status == 1) {
 			return NSAPI_ERROR_OK;
