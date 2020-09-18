@@ -119,8 +119,6 @@ void SIMCOM_HERACLES224G::set_ready_cb(Callback<void()> callback)
 
 nsapi_error_t SIMCOM_HERACLES224G::is_ready()
 {
-	//TODO: send an AT command to check if the module is ready
-	// or read the hardware status pin;
 	if (_status.is_connected()) {
 		if (_status == 1) {
 			return NSAPI_ERROR_OK;
@@ -199,7 +197,8 @@ nsapi_error_t SIMCOM_HERACLES224G::soft_power_off()
     if (!pwr) {
         tr_warn("Force modem off");
         if (_pwr_key.is_connected()) {
-            press_button(_pwr_key, 1500); // Heracles_Hardware_Design_V1.02: Power off signal at least 1500 ms
+            // Heracles_Hardware_Design_V1.02: Power off signal at least 1500 ms
+            press_button(_pwr_key, 1500); 
             return NSAPI_ERROR_OK;
         }
     }
@@ -235,7 +234,6 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
             press_button(_pwr_key, 1000);
         } else {
             tr_warn("Reset modem");
-            // TODO: implement rst pin in the HW design
             if (_rst.is_connected()) {
            	    // According to Heracles_Hardware_Design_V1.02: t >= 150ms
                 press_button(_rst, 150);
