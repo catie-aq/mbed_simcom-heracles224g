@@ -24,6 +24,18 @@
         "provide-default": {
             "help": "Provide as default CellularDevice [true/false]",
             "value": false
+        },
+        "pwr": {
+            "help": "Power control pin",
+            "value": null
+        },
+        "rst": {
+            "help": "Reset control pin",
+            "value": null
+        },
+        "polarity": {
+            "help": "Pin polarity, 1 = Active high, 0 = Active low",
+            "value": null
         }
     }
 }
