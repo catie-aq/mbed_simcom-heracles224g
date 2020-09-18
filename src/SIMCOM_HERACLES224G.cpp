@@ -50,7 +50,7 @@ using namespace events;
 #endif
 
 namespace {
-#define AUTOBAUD 0 // if the result of AT+IPR? is different than 0 (default value = 0)
+#define AUTOBAUD 0 // default value in the module
 }
 
 static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
