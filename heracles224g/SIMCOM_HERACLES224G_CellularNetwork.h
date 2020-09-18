@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2018, Arm Limited and affiliates.
+ * Copyright (c) 2020, CATIE
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,21 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SIMCOM_HERACLES224G_CELLULARCONTEXT_H_
-#define SIMCOM_HERACLES224G_CELLULARCONTEXT_H_
 
-#include "AT_CellularContext.h"
+#ifndef SIMCOM_HERACLES224G_CELLULAR_NETWORK_H_
+#define SIMCOM_HERACLES224G_CELLULAR_NETWORK_H_
+
+#include "AT_CellularNetwork.h"
 
 namespace mbed {
 
-class SIMCOM_HERACLES224G_CellularContext: public AT_CellularContext {
+class SIMCOM_HERACLES224G_CellularNetwork : public AT_CellularNetwork {
 public:
-    SIMCOM_HERACLES224G_CellularContext(ATHandler &at, CellularDevice *device, const char *apn, bool cp_req = false, bool nonip_req = false);
-    virtual ~SIMCOM_HERACLES224G_CellularContext();
+    SIMCOM_HERACLES224G_CellularNetwork(ATHandler &atHandler, AT_CellularDevice &device);
+    virtual ~ SIMCOM_HERACLES224G_CellularNetwork();
+
 protected:
-    virtual bool get_context();
+    virtual nsapi_error_t set_access_technology_impl(RadioAccessTechnology opRat);
+
 };
 
-} /* namespace mbed */
+} // namespace mbed
 
-#endif // SIMCOM_HERACLES224G_CELLULARCONTEXT_H_
+#endif // SIMCOM_HERACLES224G_CELLULAR_NETWORK_H_
