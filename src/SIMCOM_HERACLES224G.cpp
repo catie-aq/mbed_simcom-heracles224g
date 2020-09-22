@@ -119,6 +119,8 @@ void SIMCOM_HERACLES224G::set_ready_cb(Callback<void()> callback)
 
 nsapi_error_t SIMCOM_HERACLES224G::is_ready()
 {
+    nsapi_error_t err = NSAPI_ERROR_OK;
+
 	if (_status.is_connected()) {
 		if (_status == 1) {
 			return NSAPI_ERROR_OK;
@@ -275,3 +277,13 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
     // sync to check that AT is really responsive and to clear garbage
     return _at.sync(500);
 }
+
+nsapi_error_t SIMCOM_HERACLES224G::manage_SIM()
+ {
+#if !MBED_CONF_SIMCOM_HERACLES224G_EXTERNAL_SIM
+    // use the default SIM configuration: internal SIM
+
+#else 
+
+#endif 
+ }
