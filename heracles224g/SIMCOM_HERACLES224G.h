@@ -52,12 +52,18 @@ protected: // AT_CellularDevice
     virtual void set_ready_cb(Callback<void()> callback);
 
 private:
+#ifdef MBED_CONF_SIMCOM_HERACLES224G_EXTERNAL_SIM
+    nsapi_error_t manage_SIM(void);
+#endif
     void press_button(DigitalOut &button, uint32_t timeout);
     bool wake_up(bool reset = false);
     bool _active_high;
     DigitalOut	_pwr_key;
     DigitalOut	_rst;
     DigitalIn	_status;
+#ifdef MBED_CONF_SIMCOM_HERACLES224G_EXTERNAL_SIM
+    int 		_sim_used = 1;
+#endif
 };
 } // namespace mbed
 #endif /* CELLULAR_TARGETS_SIMCOM_HERACLES224G_SIMCOM_HERACLES224G_H_ */
