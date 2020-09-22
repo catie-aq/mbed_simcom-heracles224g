@@ -39,7 +39,7 @@
         },
         "external_sim": {
             "help": "select the external SIM support, 1 = yes, 0 = no",
-            "value": 1
+            "value": 0
         }
     }
 }
