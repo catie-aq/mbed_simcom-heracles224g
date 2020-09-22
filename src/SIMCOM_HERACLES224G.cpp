@@ -291,7 +291,7 @@ nsapi_error_t SIMCOM_HERACLES224G::manage_SIM()
  {
 	nsapi_error_t err = NSAPI_ERROR_OK;
 
-	// get status of the SIM used
+	// get current status of the SIM used
 	_at.lock();
 	_at.flush();
 	_at.set_at_timeout(500);
@@ -306,15 +306,15 @@ nsapi_error_t SIMCOM_HERACLES224G::manage_SIM()
 #if !MBED_CONF_SIMCOM_HERACLES224G_EXTERNAL_SIM
 		// use the default SIM configuration: internal SIM
 		tr_info("Internal SIM is used");
-		if (_sim_used != 1) {
-			_at.at_cmd_discard("+CSIMSWITCH", "=1");
+		if (_sim_used != 2) {
+			_at.at_cmd_discard("+CSIMSWITCH", "=2");
 			_at.resp_start("Ready");
 			err = _at.get_last_error();
 		}
 #else 
 		tr_info("External SIM is used");
-		if (_sim_used != 2) {
-			_at.at_cmd_discard("+CSIMSWITCH", "=2");
+		if (_sim_used != 1) {
+			_at.at_cmd_discard("+CSIMSWITCH", "=1");
 			_at.resp_start("Ready");
 			err = _at.get_last_error();
 		}
