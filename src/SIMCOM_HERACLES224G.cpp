@@ -142,8 +142,16 @@ nsapi_error_t SIMCOM_HERACLES224G::is_ready()
 	_at.cmd_start("AT");
 	_at.cmd_stop_read_resp();
 	_at.restore_at_timeout();
+	_at.unlock();
+	err =_at.get_last_error();
 
-	return _at.unlock_return_error();
+#ifdef MBED_CONF_SIMCOM_HERACLES224G_EXTERNAL_SIM
+	if (err == NSAPI_ERROR_OK) {
+		err = manage_SIM();
+	}
+#endif
+
+    return err;
 }
 
 nsapi_error_t SIMCOM_HERACLES224G::hard_power_off()
@@ -269,16 +277,51 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
 #endif
 
     }
+#ifdef MBED_CONF_SIMCOM_HERACLES224G_EXTERNAL_SIM
+    if (manage_SIM() !=  NSAPI_ERROR_OK) {
+        return false;
+    }
+#endif
     // sync to check that AT is really responsive and to clear garbage
     return _at.sync(500);
 }
 
+#ifdef MBED_CONF_SIMCOM_HERACLES224G_EXTERNAL_SIM
 nsapi_error_t SIMCOM_HERACLES224G::manage_SIM()
  {
+	nsapi_error_t err = NSAPI_ERROR_OK;
+
+	// get status of the SIM used
+	_at.lock();
+	_at.flush();
+	_at.set_at_timeout(500);
+	_at.cmd_start_stop("+CSIMSWITCH", "?");
+	_at.resp_start("+CSIMSWITCH: ");
+	_sim_used = _at.read_int();
+	_at.resp_stop();
+	err = _at.get_last_error();
+
+	if (err == NSAPI_ERROR_OK) {
+		_at.set_at_timeout(2000);
 #if !MBED_CONF_SIMCOM_HERACLES224G_EXTERNAL_SIM
-    // use the default SIM configuration: internal SIM
-
+		// use the default SIM configuration: internal SIM
+		tr_info("Internal SIM is used");
+		if (_sim_used != 1) {
+			_at.at_cmd_discard("+CSIMSWITCH", "=1");
+			_at.resp_start("Ready");
+			err = _at.get_last_error();
+		}
 #else 
-
-#endif 
+		tr_info("External SIM is used");
+		if (_sim_used != 2) {
+			_at.at_cmd_discard("+CSIMSWITCH", "=2");
+			_at.resp_start("Ready");
+			err = _at.get_last_error();
+		}
+#endif
+	}
+	_at.restore_at_timeout();
+	_at.unlock();
+	return err;
  }
+#endif
