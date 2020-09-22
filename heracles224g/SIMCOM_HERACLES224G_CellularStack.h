@@ -99,10 +99,10 @@ private:
 
     /** Convert IP address to dotted string representation
      *
-     *  BG96 requires consecutive zeros so can't use get_ip_address or ip6tos directly.
+     *  HERACLES224G requires consecutive zeros so can't use get_ip_address or ip6tos directly.
      *
-     *  @param ip address
-     *  @param dot buffer with size NSAPI_IPv6, where address is written zero terminated
+     *  \param ip address
+     *  \param dot buffer with size NSAPI_IPv6, where address is written zero terminated
      */
     void ip2dot(const SocketAddress &ip, char *dot);
 
