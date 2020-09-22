@@ -62,7 +62,7 @@ private:
     DigitalOut	_rst;
     DigitalIn	_status;
 #ifdef MBED_CONF_SIMCOM_HERACLES224G_EXTERNAL_SIM
-    int 		_sim_used = 1;
+    int 		_sim_used = 2;
 #endif
 };
 } // namespace mbed
