@@ -36,6 +36,10 @@
         "polarity": {
             "help": "Pin polarity, 1 = Active high, 0 = Active low",
             "value": null
+        },
+        "external_sim": {
+            "help": "select the external SIM support, 1 = yes, 0 = no",
+            "value": 1
         }
     }
 }
