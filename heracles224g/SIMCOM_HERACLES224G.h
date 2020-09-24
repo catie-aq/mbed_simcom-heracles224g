@@ -52,8 +52,8 @@ protected: // AT_CellularDevice
     virtual void set_ready_cb(Callback<void()> callback);
 
 private:
-#ifdef MBED_CONF_SIMCOM_HERACLES224G_EXTERNAL_SIM
-    nsapi_error_t manage_SIM(void);
+#ifdef MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM
+    nsapi_error_t manage_sim(void);
 #endif
     void press_button(DigitalOut &button, uint32_t timeout);
     bool wake_up(bool reset = false);
@@ -61,7 +61,7 @@ private:
     DigitalOut	_pwr_key;
     DigitalOut	_rst;
     DigitalIn	_status;
-#ifdef MBED_CONF_SIMCOM_HERACLES224G_EXTERNAL_SIM
+#ifdef MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM
     int 		_sim_used = 2;
 #endif
 };
