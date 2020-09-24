@@ -36,6 +36,10 @@
         "polarity": {
             "help": "Pin polarity, 1 = Active high, 0 = Active low",
             "value": null
+        },
+        "status": {
+            "help": "Pin control status",
+            "value": null
         }
     }
 }
