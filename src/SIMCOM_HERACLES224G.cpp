@@ -119,12 +119,11 @@ void SIMCOM_HERACLES224G::set_ready_cb(Callback<void()> callback)
 
 nsapi_error_t SIMCOM_HERACLES224G::is_ready()
 {
-	if (_status.is_connected()) {
-		if (_status == 1) {
-			return NSAPI_ERROR_OK;
-		}
-		return NSAPI_ERROR_DEVICE_ERROR;
-	}
+    if (_status.is_connected()) {
+        if (_status != 1) {
+            return NSAPI_ERROR_DEVICE_ERROR;
+        }
+    }
 
 	_at.lock();
 	_at.at_cmd_discard("", "");
@@ -217,16 +216,7 @@ void SIMCOM_HERACLES224G::press_button(DigitalOut &button, uint32_t timeout)
 
 bool SIMCOM_HERACLES224G::wake_up(bool reset)
 {
-    // check if modem is already ready
-    _at.lock();
-    _at.flush();
-    _at.set_at_timeout(100);
-    _at.cmd_start("AT");
-    _at.cmd_stop_read_resp();
-    nsapi_error_t err = _at.get_last_error();
-    _at.restore_at_timeout();
-    _at.unlock();
-
+    nsapi_error_t err = is_ready();
     // modem is not responding, power it on
     if (err != NSAPI_ERROR_OK) {
         if (!reset) {
