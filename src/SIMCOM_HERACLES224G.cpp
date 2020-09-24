@@ -101,8 +101,8 @@ CellularDevice *CellularDevice::get_default_instance()
     static SIMCOM_HERACLES224G device(&serial,
                               MBED_CONF_SIMCOM_HERACLES224G_PWR,
                               MBED_CONF_SIMCOM_HERACLES224G_POLARITY,
-							  MBED_CONF_SIMCOM_HERACLES224G_RST,
-							  MBED_CONF_SIMCOM_HERACLES224G_STATUS);
+                              MBED_CONF_SIMCOM_HERACLES224G_RST,
+                              MBED_CONF_SIMCOM_HERACLES224G_STATUS);
 
     return &device;
 }
