@@ -41,12 +41,16 @@ using namespace events;
 #define MBED_CONF_SIMCOM_HERACLES224G_POLARITY    1 // active high
 #endif
 
-#if !defined(MBED_CONF_QUECTEL_BG96_RST)
-#define MBED_CONF_QUECTEL_BG96_RST    NC
+#if !defined(MBED_CONF_SIMCOM_HERACLES224G_RST)
+#define MBED_CONF_SIMCOM_HERACLES224G_RST    NC
 #endif
 
 #if !defined(MBED_CONF_SIMCOM_HERACLES224G_PWR)
 #define MBED_CONF_SIMCOM_HERACLES224G_PWR    NC
+#endif
+
+#if !defined(MBED_CONF_SIMCOM_HERACLES224G_STATUS)
+#define MBED_CONF_SIMCOM_HERACLES224G_STATUS	NC
 #endif
 
 namespace {
@@ -96,7 +100,9 @@ CellularDevice *CellularDevice::get_default_instance()
 #endif
     static SIMCOM_HERACLES224G device(&serial,
                               MBED_CONF_SIMCOM_HERACLES224G_PWR,
-                              MBED_CONF_SIMCOM_HERACLES224G_POLARITY);
+                              MBED_CONF_SIMCOM_HERACLES224G_POLARITY,
+							  MBED_CONF_SIMCOM_HERACLES224G_RST,
+							  MBED_CONF_SIMCOM_HERACLES224G_STATUS);
 
     return &device;
 }
