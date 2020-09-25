@@ -324,7 +324,7 @@ nsapi_error_t SIMCOM_HERACLES224G::manage_sim()
 			_at.resp_start("Ready");
 			err = _at.get_last_error();
 		}
-#endif
+#endif // MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM
 	}
 	_at.restore_at_timeout();
 	_at.unlock();
