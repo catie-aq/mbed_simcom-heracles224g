@@ -38,8 +38,8 @@
             "value": null
         },
         "status": {
-            "help": "Pin control status",
-            "value": null
+            "help": "Status pin",
+            "value": "NC"
         }
     }
 }
