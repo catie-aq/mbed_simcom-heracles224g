@@ -49,6 +49,10 @@ using namespace events;
 #define MBED_CONF_SIMCOM_HERACLES224G_PWR    NC
 #endif
 
+#if !defined(MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM)
+#define MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM    false
+#endif
+
 namespace {
 #define AUTOBAUD 0 // default value in the module
 }
