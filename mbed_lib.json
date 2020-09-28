@@ -44,7 +44,6 @@
         "use_external_sim": {
             "help": "Set to true to use an external SIM",
             "value": false
-
         }
     }
 }
