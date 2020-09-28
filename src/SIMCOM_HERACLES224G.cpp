@@ -279,7 +279,7 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
         if (!rdy) {
             return false;
         }
-#endif // MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM
+#endif // AUTOBAUD
     }
 
     if (manage_sim() !=  NSAPI_ERROR_OK) {
