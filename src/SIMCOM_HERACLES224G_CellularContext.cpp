@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 #include "SIMCOM_HERACLES224G_CellularContext.h"
+#include "SIMCOM_HERACLES224G_CellularStack.h"
 #include "CellularLog.h"
 
 #include "Semaphore.h"
