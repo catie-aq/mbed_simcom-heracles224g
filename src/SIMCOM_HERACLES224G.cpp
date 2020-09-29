@@ -266,7 +266,7 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
         if (err != NSAPI_ERROR_OK) {
         	return false;
         }
-#else
+#else // !AUTOBAUD
         // According to Heracles_Hardware_Design_V1.02, serial_port is active after 3s, but it seems to take over 5s
         // This URC does not appear when autobauding function is active. (AT+IPR=x)
         _at.lock();
