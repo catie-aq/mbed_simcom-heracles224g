@@ -279,7 +279,7 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
         if (!rdy) {
             return false;
         }
-#endif // AUTOBAUD
+#endif // !AUTOBAUD
     }
 
     if (manage_sim() !=  NSAPI_ERROR_OK) {
