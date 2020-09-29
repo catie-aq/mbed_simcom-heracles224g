@@ -79,28 +79,13 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_connect(nsapi_socket_t h
 			err = _at.at_cmd_discard("+CIPSTART", "=", "\"%s\",\"%s\",\"%d\"", "TCP",
 					address.get_ip_address(), address.get_port());
 
-			handle_open_socket_response(modem_connect_id, err, false);
-			if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
-				if (err == HERACLES224G_SOCKET_BIND_FAIL) {
-					socket->id = -1;
-					_at.unlock();
-					return NSAPI_ERROR_PARAMETER;
-				}
-			}
+			handle_open_socket_response(err);
+
 		} else {
 			err =_at.at_cmd_discard("+CIPSTART", "=", "\"%s\",\"%s\",\"%d\"", "UDP",
 					address.get_ip_address(), address.get_port());
 
 			handle_open_socket_response(err);
-
-			if ((_at.get_last_error() == NSAPI_ERROR_OK) && err) {
-				if (err == HERACLES224G_SOCKET_BIND_FAIL) {
-					socket->id = -1;
-					_at.unlock();
-					return NSAPI_ERROR_PARAMETER;
-				}
-			}
-
 		}
 
 	    if (err == NSAPI_ERROR_OK) {
@@ -362,6 +347,8 @@ nsapi_error_t SIMCOM_HERACLES224G_CellularStack::socket_close_impl(int sock_id)
         CellularSocket *socket = find_socket(sock_id);
     	err = _at.at_cmd_discard("+CIPCLOSE", "=", "%d", sock_id);
     }
+//    _at.resp_start("CLOSE OK");
+//    _at.resp_stop();
 
     _at.restore_at_timeout();
 
@@ -387,12 +374,6 @@ void SIMCOM_HERACLES224G_CellularStack::handle_open_socket_response(int &err)
 	}
 	_at.resp_stop();
 	_at.restore_at_timeout();
-
-    _at.resp_stop();
-    _at.restore_at_timeout();
-
-    err = _at.get_last_error();
-
 
 }
 
@@ -564,39 +545,41 @@ nsapi_size_or_error_t SIMCOM_HERACLES224G_CellularStack::socket_recvfrom_impl(Ce
     int port = -1;
     char ip_address[NSAPI_IP_SIZE + 1];
 
-    if (socket->proto == NSAPI_TCP) {
-        // do not read more than max size
-        size = size > HERACLES224G_MAX_RECV_SIZE ? HERACLES224G_MAX_RECV_SIZE : size;
-		_at.cmd_start_stop("+QIRD", "=", "%d%d", socket->id, size);
-    } else {
-        _at.cmd_start_stop("+QIRD", "=", "%d", socket->id);
-    }
-
-	_at.resp_start("+QIRD:");
-
-    recv_len = _at.read_int();
-    if (recv_len > 0) {
-        // UDP has remote_IP and remote_port parameters
-        if (socket->proto == NSAPI_UDP) {
-            _at.read_string(ip_address, sizeof(ip_address));
-            port = _at.read_int();
-        }
-        // do not read more than buffer size
-        recv_len = recv_len > (nsapi_size_or_error_t)size ? size : recv_len;
-        _at.read_bytes((uint8_t *)buffer, recv_len);
-    }
-    _at.resp_stop();
-
-    // We block only if 0 recv length really means no data.
-    // If 0 is followed by ip address and port can be an UDP 0 length packet
-    if (!recv_len && port < 0) {
-        return NSAPI_ERROR_WOULD_BLOCK;
-    }
-
-    if (address) {
-        address->set_ip_address(ip_address);
-        address->set_port(port);
-    }
+//    if (socket->proto == NSAPI_TCP) {
+//        // do not read more than max size
+//        size = size > HERACLES224G_MAX_RECV_SIZE ? HERACLES224G_MAX_RECV_SIZE : size;
+//		_at.cmd_start_stop("+QIRD", "=", "%d%d", socket->id, size);
+//
+//    } else {
+//        _at.cmd_start_stop("+QIRD", "=", "%d", socket->id);
+//    }
+//
+//	_at.resp_start("+QIRD:");
+//
+//
+//    recv_len = _at.read_int();
+//    if (recv_len > 0) {
+//        // UDP has remote_IP and remote_port parameters
+//        if (socket->proto == NSAPI_UDP) {
+//            _at.read_string(ip_address, sizeof(ip_address));
+//            port = _at.read_int();
+//        }
+//        // do not read more than buffer size
+//        recv_len = recv_len > (nsapi_size_or_error_t)size ? size : recv_len;
+//        _at.read_bytes((uint8_t *)buffer, recv_len);
+//    }
+//    _at.resp_stop();
+//
+//    // We block only if 0 recv length really means no data.
+//    // If 0 is followed by ip address and port can be an UDP 0 length packet
+//    if (!recv_len && port < 0) {
+//        return NSAPI_ERROR_WOULD_BLOCK;
+//    }
+//
+//    if (address) {
+//        address->set_ip_address(ip_address);
+//        address->set_port(port);
+//    }
 
     return recv_len;
 }
