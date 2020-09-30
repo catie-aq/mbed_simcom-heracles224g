@@ -131,14 +131,12 @@ nsapi_error_t SIMCOM_HERACLES224G::is_ready()
 {
     nsapi_error_t err = NSAPI_ERROR_OK;
 
-	if (_status.is_connected()) {
-		if (_status == 1) {
-				err = manage_sim();
-			return err;
-		}
-		return NSAPI_ERROR_DEVICE_ERROR;
-	}
-
+    if (_status.is_connected()) {
+        if (_status != 1) {
+            return NSAPI_ERROR_DEVICE_ERROR;
+        }
+    }
+    
 	_at.lock();
 	_at.at_cmd_discard("", "");
     // we need to do this twice because for example after data mode the first 'AT' command will give modem a
