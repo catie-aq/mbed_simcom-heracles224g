@@ -177,7 +177,6 @@ nsapi_error_t SIMCOM_HERACLES224G::hard_power_on()
 	if (_pwr_key.is_connected()) {
 		tr_info("SIMCOM_HERACLES224G::hard power on");
 		press_button(_pwr_key, 1000);
-		ThisThread::sleep_for(10s);
 		return NSAPI_ERROR_OK;
 	}
 
@@ -235,6 +234,17 @@ void SIMCOM_HERACLES224G::press_button(DigitalOut &button, uint32_t timeout)
 bool SIMCOM_HERACLES224G::wake_up(bool reset)
 {
     nsapi_error_t err = is_ready();
+    bool rdy = false;
+
+   // check if modem is already ready
+    _at.lock();
+    _at.flush();
+    _at.set_at_timeout(30ms);
+	_at.cmd_start("AT");
+	_at.cmd_stop_read_resp();
+    err = _at.get_last_error();
+    _at.restore_at_timeout();
+    _at.unlock();
     // modem is not responding, power it on
     if (err != NSAPI_ERROR_OK) {
         if (!reset) {
@@ -243,35 +253,32 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
         } else {
             tr_warn("Reset modem");
             if (_rst.is_connected()) {
-           	    // According to Heracles_Hardware_Design_V1.02: t >= 150ms
+           	    // According to Heracles_Hardware_Design_V1.02: t >= 105ms
                 press_button(_rst, 150);
             }
         }
 
 #if !AUTOBAUD
         // default value: AT+IPR: 0 (autobaud)
-        // According to Heracles_Hardware_Design_V1.02: t >= 3s
-        ThisThread::sleep_for(10s);
-        // try again to send an AT command
         _at.lock();
-        _at.flush();
-        _at.set_at_timeout(30);
-        _at.cmd_start("AT");
-        _at.cmd_stop_read_resp();
-        err = _at.get_last_error();
-        _at.restore_at_timeout();
-        _at.unlock();
-        if (err != NSAPI_ERROR_OK) {
-        	return false;
-        }
+        // According to Heracles_Hardware_Design_V1.02: t >= 3s
+	   _at.set_at_timeout(5s);
+	   _at.resp_start();
+	   _at.set_stop_tag("Ready");
+	   rdy = _at.consume_to_stop_tag();
+	   _at.restore_at_timeout();
+	   _at.unlock();
+	   if (!rdy) {
+		   return false;
+	   }
 #else // !AUTOBAUD
         // According to Heracles_Hardware_Design_V1.02, serial_port is active after 3s, but it seems to take over 5s
         // This URC does not appear when autobauding function is active. (AT+IPR=x)
         _at.lock();
-        _at.set_at_timeout(5000);
+        _at.set_at_timeout(5s);
         _at.resp_start();
         _at.set_stop_tag("RDY");
-        bool rdy = _at.consume_to_stop_tag();
+        rdy = _at.consume_to_stop_tag();
         _at.restore_at_timeout();
         _at.unlock();
         if (!rdy) {
@@ -280,8 +287,10 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
 #endif // !AUTOBAUD
     }
 
-    if (manage_sim() !=  NSAPI_ERROR_OK) {
-        return false;
+    if (rdy) {
+		if (manage_sim() !=  NSAPI_ERROR_OK) {
+			return false;
+		}
     }
 
     // sync to check that AT is really responsive and to clear garbage
