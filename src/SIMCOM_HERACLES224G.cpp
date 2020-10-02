@@ -87,7 +87,7 @@ static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
 SIMCOM_HERACLES224G::SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key, bool active_high, PinName rst, PinName status)
     : AT_CellularDevice(fh),
       _active_high(active_high),
-      _pwr_key(pwr_key, !_active_high),
+      _pwr_key(pwr_key, 0),
 	  _rst(rst, !_active_high),
 	  _status(status)
 {
@@ -159,8 +159,12 @@ nsapi_error_t SIMCOM_HERACLES224G::is_ready()
 
 nsapi_error_t SIMCOM_HERACLES224G::hard_power_off()
 {
-    _pwr_key = !_active_high;
-    ThisThread::sleep_for(10s);
+	if (_status.is_connected()) {
+		if (_status == 1) {
+			return NSAPI_ERROR_DEVICE_ERROR;
+		}
+	}
+	press_button(_pwr_key, 1500);
 
     return NSAPI_ERROR_OK;
 }
@@ -168,15 +172,15 @@ nsapi_error_t SIMCOM_HERACLES224G::hard_power_off()
 nsapi_error_t SIMCOM_HERACLES224G::hard_power_on()
 {
 	if (_status.is_connected()) {
-		// check if the module is already ready
-		if (_status == 1) {
+		// check if the module is already off
+		if (_status == 0) {
 			return NSAPI_ERROR_OK;
 		}
 	}
-	// need to turn the module on
+	// need to turn the module off
 	if (_pwr_key.is_connected()) {
 		tr_info("SIMCOM_HERACLES224G::hard power on");
-		press_button(_pwr_key, 1000);
+		press_button(_pwr_key, 1500);
 		return NSAPI_ERROR_OK;
 	}
 
@@ -204,7 +208,7 @@ nsapi_error_t SIMCOM_HERACLES224G::soft_power_off()
 {
     _at.lock();
     _at.set_at_timeout(2000);
-    _at.cmd_start("AT+CPOWD=1");
+    _at.cmd_start_stop("+CPOWD", "=1");
     _at.resp_start();
     _at.set_stop_tag("NORMAL POWER DOWN");
     bool pwr = _at.consume_to_stop_tag();
@@ -212,11 +216,8 @@ nsapi_error_t SIMCOM_HERACLES224G::soft_power_off()
     _at.unlock();
     if (!pwr) {
         tr_warn("Force modem off");
-        if (_pwr_key.is_connected()) {
-            // Heracles_Hardware_Design_V1.02: Power off signal at least 1500 ms
-            press_button(_pwr_key, 1500); 
-            return NSAPI_ERROR_OK;
-        }
+        // Heracles_Hardware_Design_V1.02: Power off signal at least 1500 ms
+        return hard_power_off();
     }
     return _at.unlock_return_error();
 }
