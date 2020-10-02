@@ -50,7 +50,7 @@ using namespace events;
 #endif
 
 #if !defined(MBED_CONF_SIMCOM_HERACLES224G_STATUS)
-#define MBED_CONF_SIMCOM_HERACLES224G_STATUS	NC
+#define MBED_CONF_SIMCOM_HERACLES224G_STATUS    NC
 #endif
 
 #if !defined(MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM)
@@ -84,12 +84,13 @@ static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
     20,  // PROPERTY_AT_SEND_DELAY
 };
 
-SIMCOM_HERACLES224G::SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key, bool active_high, PinName rst, PinName status)
+SIMCOM_HERACLES224G::SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key, bool active_high,
+        PinName rst, PinName status)
     : AT_CellularDevice(fh),
       _active_high(active_high),
       _pwr_key(pwr_key, 0),
-	  _rst(rst, !_active_high),
-	  _status(status)
+      _rst(rst, !_active_high),
+      _status(status)
 {
     set_cellular_properties(cellular_properties);
 }
@@ -98,15 +99,17 @@ SIMCOM_HERACLES224G::SIMCOM_HERACLES224G(FileHandle *fh, PinName pwr_key, bool a
 #include "drivers/BufferedSerial.h"
 CellularDevice *CellularDevice::get_default_instance()
 {
-    static BufferedSerial serial(MBED_CONF_SIMCOM_HERACLES224G_TX, MBED_CONF_SIMCOM_HERACLES224G_RX, MBED_CONF_SIMCOM_HERACLES224G_BAUDRATE);
+    static BufferedSerial serial(MBED_CONF_SIMCOM_HERACLES224G_TX, MBED_CONF_SIMCOM_HERACLES224G_RX,
+            MBED_CONF_SIMCOM_HERACLES224G_BAUDRATE);
 #if defined (MBED_CONF_SIMCOM_HERACLES224G_RTS) && defined (MBED_CONF_SIMCOM_HERACLES224G_CTS)
-    serial.set_flow_control(SerialBase::RTSCTS, MBED_CONF_SIMCOM_HERACLES224G_RTS, MBED_CONF_SIMCOM_HERACLES224G_CTS);
+    serial.set_flow_control(SerialBase::RTSCTS, MBED_CONF_SIMCOM_HERACLES224G_RTS,
+            MBED_CONF_SIMCOM_HERACLES224G_CTS);
 #endif
     static SIMCOM_HERACLES224G device(&serial,
-                              MBED_CONF_SIMCOM_HERACLES224G_PWR,
-                              MBED_CONF_SIMCOM_HERACLES224G_POLARITY,
-                              MBED_CONF_SIMCOM_HERACLES224G_RST,
-                              MBED_CONF_SIMCOM_HERACLES224G_STATUS);
+            MBED_CONF_SIMCOM_HERACLES224G_PWR,
+            MBED_CONF_SIMCOM_HERACLES224G_POLARITY,
+            MBED_CONF_SIMCOM_HERACLES224G_RST,
+            MBED_CONF_SIMCOM_HERACLES224G_STATUS);
 
     return &device;
 }
@@ -117,7 +120,8 @@ AT_CellularNetwork *SIMCOM_HERACLES224G::open_network_impl(ATHandler &at)
     return new SIMCOM_HERACLES224G_CellularNetwork(at, *this);
 }
 
-AT_CellularContext *SIMCOM_HERACLES224G::create_context_impl(ATHandler &at, const char *apn, bool cp_req, bool nonip_req)
+AT_CellularContext *SIMCOM_HERACLES224G::create_context_impl(ATHandler &at, const char *apn,
+        bool cp_req, bool nonip_req)
 {
     return new SIMCOM_HERACLES224G_CellularContext(at, this, apn, cp_req, nonip_req);
 }
@@ -136,70 +140,70 @@ nsapi_error_t SIMCOM_HERACLES224G::is_ready()
             return NSAPI_ERROR_DEVICE_ERROR;
         }
     }
-    
-	_at.lock();
-	_at.at_cmd_discard("", "");
-    // we need to do this twice because for example after data mode the first 'AT' command will give modem a
-	// stimulus that we are back to command mode.
-	_at.clear_error();
-	_at.flush();
-	_at.set_at_timeout(100);
-	_at.cmd_start("AT");
-	_at.cmd_stop_read_resp();
-	_at.restore_at_timeout();
-	_at.unlock();
-	err =_at.get_last_error();
 
-	if (err == NSAPI_ERROR_OK) {
-		err = manage_sim();
-	}
+    _at.lock();
+    _at.at_cmd_discard("", "");
+    // we need to do this twice because for example after data mode the first 'AT' command will give modem a
+    // stimulus that we are back to command mode.
+    _at.clear_error();
+    _at.flush();
+    _at.set_at_timeout(100);
+    _at.cmd_start("AT");
+    _at.cmd_stop_read_resp();
+    _at.restore_at_timeout();
+    _at.unlock();
+    err = _at.get_last_error();
+
+    if (err == NSAPI_ERROR_OK) {
+        err = manage_sim();
+    }
 
     return err;
 }
 
 nsapi_error_t SIMCOM_HERACLES224G::hard_power_off()
 {
-	if (_status.is_connected()) {
-		if (_status == 1) {
-			return NSAPI_ERROR_DEVICE_ERROR;
-		}
-	}
-	press_button(_pwr_key, 1500);
+    if (_status.is_connected()) {
+        if (_status == 1) {
+            return NSAPI_ERROR_DEVICE_ERROR;
+        }
+    }
+    press_button(_pwr_key, 1500);
 
     return NSAPI_ERROR_OK;
 }
 
 nsapi_error_t SIMCOM_HERACLES224G::hard_power_on()
 {
-	if (_status.is_connected()) {
-		// check if the module is already off
-		if (_status == 0) {
-			return NSAPI_ERROR_OK;
-		}
-	}
-	// need to turn the module off
-	if (_pwr_key.is_connected()) {
-		tr_info("SIMCOM_HERACLES224G::hard power on");
-		press_button(_pwr_key, 1500);
-		return NSAPI_ERROR_OK;
-	}
+    if (_status.is_connected()) {
+        // check if the module is already off
+        if (_status == 0) {
+            return NSAPI_ERROR_OK;
+        }
+    }
+    // need to turn the module off
+    if (_pwr_key.is_connected()) {
+        tr_info("SIMCOM_HERACLES224G::hard power on");
+        press_button(_pwr_key, 1500);
+        return NSAPI_ERROR_OK;
+    }
 
     return NSAPI_ERROR_DEVICE_ERROR;
 }
 
 nsapi_error_t SIMCOM_HERACLES224G::soft_power_on()
 {
-	if (_pwr_key.is_connected()) {
-		tr_info("SIMCOM_HERACLES224G::soft_power_on");
-		// check if modem was powered on already
-		if (!wake_up()) {
-			if (!wake_up(false)) {
-				tr_error("Modem not responding");
-				soft_power_off();
-				return NSAPI_ERROR_DEVICE_ERROR;
-			}
-		}
-	}
+    if (_pwr_key.is_connected()) {
+        tr_info("SIMCOM_HERACLES224G::soft_power_on");
+        // check if modem was powered on already
+        if (!wake_up()) {
+            if (!wake_up(false)) {
+                tr_error("Modem not responding");
+                soft_power_off();
+                return NSAPI_ERROR_DEVICE_ERROR;
+            }
+        }
+    }
 
     return NSAPI_ERROR_OK;
 }
@@ -237,12 +241,12 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
     nsapi_error_t err = is_ready();
     bool rdy = false;
 
-   // check if modem is already ready
+    // check if modem is already ready
     _at.lock();
     _at.flush();
     _at.set_at_timeout(30ms);
-	_at.cmd_start("AT");
-	_at.cmd_stop_read_resp();
+    _at.cmd_start("AT");
+    _at.cmd_stop_read_resp();
     err = _at.get_last_error();
     _at.restore_at_timeout();
     _at.unlock();
@@ -254,7 +258,7 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
         } else {
             tr_warn("Reset modem");
             if (_rst.is_connected()) {
-           	    // According to Heracles_Hardware_Design_V1.02: t >= 105ms
+                // According to Heracles_Hardware_Design_V1.02: t >= 105ms
                 press_button(_rst, 150);
             }
         }
@@ -263,15 +267,15 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
         // default value: AT+IPR: 0 (autobaud)
         _at.lock();
         // According to Heracles_Hardware_Design_V1.02: t >= 3s
-	   _at.set_at_timeout(5s);
-	   _at.resp_start();
-	   _at.set_stop_tag("Ready");
-	   rdy = _at.consume_to_stop_tag();
-	   _at.restore_at_timeout();
-	   _at.unlock();
-	   if (!rdy) {
-		   return false;
-	   }
+        _at.set_at_timeout(5s);
+        _at.resp_start();
+        _at.set_stop_tag("Ready");
+        rdy = _at.consume_to_stop_tag();
+        _at.restore_at_timeout();
+        _at.unlock();
+        if (!rdy) {
+            return false;
+        }
 #else // !AUTOBAUD
         // According to Heracles_Hardware_Design_V1.02, serial_port is active after 3s, but it seems to take over 5s
         // This URC does not appear when autobauding function is active. (AT+IPR=x)
@@ -289,9 +293,9 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
     }
 
     if (rdy) {
-		if (manage_sim() !=  NSAPI_ERROR_OK) {
-			return false;
-		}
+        if (manage_sim() !=  NSAPI_ERROR_OK) {
+            return false;
+        }
     }
 
     // sync to check that AT is really responsive and to clear garbage
@@ -300,39 +304,39 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
 
 
 nsapi_error_t SIMCOM_HERACLES224G::manage_sim()
- {
-	nsapi_error_t err = NSAPI_ERROR_OK;
+{
+    nsapi_error_t err = NSAPI_ERROR_OK;
 
-	// get current status of the SIM used
-	_at.lock();
-	_at.flush();
-	_at.set_at_timeout(500);
-	_at.cmd_start_stop("+CSIMSWITCH", "?");
-	_at.resp_start("+CSIMSWITCH: ");
-	_sim_used = _at.read_int();
-	_at.resp_stop();
-	err = _at.get_last_error();
+    // get current status of the SIM used
+    _at.lock();
+    _at.flush();
+    _at.set_at_timeout(500);
+    _at.cmd_start_stop("+CSIMSWITCH", "?");
+    _at.resp_start("+CSIMSWITCH: ");
+    _sim_used = _at.read_int();
+    _at.resp_stop();
+    err = _at.get_last_error();
 
-	if (err == NSAPI_ERROR_OK) {
-		_at.set_at_timeout(2000);
+    if (err == NSAPI_ERROR_OK) {
+        _at.set_at_timeout(2000);
 #if !MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM
-		// use the default SIM configuration: internal SIM
-		tr_info("Internal SIM is used");
-		if (_sim_used != 2) {
-			_at.at_cmd_discard("+CSIMSWITCH", "=2");
-			_at.resp_start("Ready");
-			err = _at.get_last_error();
-		}
+        // use the default SIM configuration: internal SIM
+        tr_info("Internal SIM is used");
+        if (_sim_used != 2) {
+            _at.at_cmd_discard("+CSIMSWITCH", "=2");
+            _at.resp_start("Ready");
+            err = _at.get_last_error();
+        }
 #else // !MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM
-		tr_info("External SIM is used");
-		if (_sim_used != 1) {
-			_at.at_cmd_discard("+CSIMSWITCH", "=1");
-			_at.resp_start("Ready");
-			err = _at.get_last_error();
-		}
+        tr_info("External SIM is used");
+        if (_sim_used != 1) {
+            _at.at_cmd_discard("+CSIMSWITCH", "=1");
+            _at.resp_start("Ready");
+            err = _at.get_last_error();
+        }
 #endif // MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM
-	}
-	_at.restore_at_timeout();
-	_at.unlock();
-	return err;
- }
+    }
+    _at.restore_at_timeout();
+    _at.unlock();
+    return err;
+}
