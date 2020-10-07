@@ -168,7 +168,8 @@ nsapi_error_t SIMCOM_HERACLES224G::hard_power_off()
             return NSAPI_ERROR_DEVICE_ERROR;
         }
     }
-    press_button(_pwr_key, 1500);
+    // Heracles_Hardware_Design_V1.02: Power off signal at least 1500 ms
+    press_button(_pwr_key, 1500ms);
 
     return NSAPI_ERROR_OK;
 }
@@ -184,7 +185,7 @@ nsapi_error_t SIMCOM_HERACLES224G::hard_power_on()
     // need to turn the module off
     if (_pwr_key.is_connected()) {
         tr_info("SIMCOM_HERACLES224G::hard power on");
-        press_button(_pwr_key, 1500);
+        press_button(_pwr_key, 1500ms);
         return NSAPI_ERROR_OK;
     }
 
@@ -220,19 +221,18 @@ nsapi_error_t SIMCOM_HERACLES224G::soft_power_off()
     _at.unlock();
     if (!pwr) {
         tr_warn("Force modem off");
-        // Heracles_Hardware_Design_V1.02: Power off signal at least 1500 ms
         return hard_power_off();
     }
     return _at.unlock_return_error();
 }
 
-void SIMCOM_HERACLES224G::press_button(DigitalOut &button, uint32_t timeout)
+void SIMCOM_HERACLES224G::press_button(DigitalOut &button, Kernel::Clock::duration_u32 rel_time)
 {
     if (!button.is_connected()) {
         return;
     }
     button = _active_high;
-    ThisThread::sleep_for(timeout);
+    ThisThread::sleep_for(rel_time);
     button = !_active_high;
 }
 
@@ -254,12 +254,12 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
     if (err != NSAPI_ERROR_OK) {
         if (!reset) {
             tr_info("Power on modem");
-            press_button(_pwr_key, 1000);
+            press_button(_pwr_key, 1000ms);
         } else {
             tr_warn("Reset modem");
             if (_rst.is_connected()) {
                 // According to Heracles_Hardware_Design_V1.02: t >= 105ms
-                press_button(_rst, 150);
+                press_button(_rst, 105ms);
             }
         }
 
@@ -267,7 +267,7 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
         // default value: AT+IPR: 0 (autobaud)
         _at.lock();
         // According to Heracles_Hardware_Design_V1.02: t >= 3s
-        _at.set_at_timeout(5s);
+        _at.set_at_timeout(3s);
         _at.resp_start();
         _at.set_stop_tag("Ready");
         rdy = _at.consume_to_stop_tag();
@@ -310,7 +310,6 @@ nsapi_error_t SIMCOM_HERACLES224G::manage_sim()
     // get current status of the SIM used
     _at.lock();
     _at.flush();
-    _at.set_at_timeout(500);
     _at.cmd_start_stop("+CSIMSWITCH", "?");
     _at.resp_start("+CSIMSWITCH: ");
     _sim_used = _at.read_int();
@@ -336,7 +335,6 @@ nsapi_error_t SIMCOM_HERACLES224G::manage_sim()
         }
 #endif // MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM
     }
-    _at.restore_at_timeout();
     _at.unlock();
     return err;
 }
