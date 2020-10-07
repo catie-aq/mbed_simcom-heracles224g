@@ -56,7 +56,7 @@ protected: // AT_CellularDevice
 
 private:
     nsapi_error_t manage_sim(void);
-    void press_button(DigitalOut &button, uint32_t timeout);
+    void press_button(DigitalOut &button, Kernel::Clock::duration_u32 rel_time)
     bool wake_up(bool reset = false);
     bool _active_high;
     DigitalOut  _pwr_key;
