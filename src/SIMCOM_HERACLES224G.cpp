@@ -147,10 +147,8 @@ nsapi_error_t SIMCOM_HERACLES224G::is_ready()
     // stimulus that we are back to command mode.
     _at.clear_error();
     _at.flush();
-    _at.set_at_timeout(100);
     _at.cmd_start("AT");
     _at.cmd_stop_read_resp();
-    _at.restore_at_timeout();
     _at.unlock();
     err = _at.get_last_error();
 
@@ -212,7 +210,7 @@ nsapi_error_t SIMCOM_HERACLES224G::soft_power_on()
 nsapi_error_t SIMCOM_HERACLES224G::soft_power_off()
 {
     _at.lock();
-    _at.set_at_timeout(2000);
+    _at.set_at_timeout(2000ms);
     _at.cmd_start_stop("+CPOWD", "=1");
     _at.resp_start();
     _at.set_stop_tag("NORMAL POWER DOWN");
@@ -317,7 +315,8 @@ nsapi_error_t SIMCOM_HERACLES224G::manage_sim()
     err = _at.get_last_error();
 
     if (err == NSAPI_ERROR_OK) {
-        _at.set_at_timeout(2000);
+    	// to ensure the syncrhonisation with the new SIM configuration
+        _at.set_at_timeout(2000ms);
 #if !MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM
         // use the default SIM configuration: internal SIM
         tr_info("Internal SIM is used");
@@ -334,6 +333,7 @@ nsapi_error_t SIMCOM_HERACLES224G::manage_sim()
             err = _at.get_last_error();
         }
 #endif // MBED_CONF_SIMCOM_HERACLES224G_USE_EXTERNAL_SIM
+        _at.restore_at_timeout();
     }
     _at.unlock();
     return err;
