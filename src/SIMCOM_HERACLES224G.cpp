@@ -58,7 +58,8 @@ using namespace events;
 #endif
 
 namespace {
-#define AUTOBAUD 0 // default value in the module
+#define AUTOBAUD 		 	0  // default value in the module
+#define POWER_ON_DURATION 	3s // in seconds
 }
 
 static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
@@ -265,7 +266,7 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
         // default value: AT+IPR: 0 (autobaud)
         _at.lock();
         // According to Heracles_Hardware_Design_V1.02: t >= 3s
-        _at.set_at_timeout(3s);
+        _at.set_at_timeout(POWER_ON_DURATION);
         _at.resp_start();
         _at.set_stop_tag("Ready");
         rdy = _at.consume_to_stop_tag();
@@ -278,7 +279,7 @@ bool SIMCOM_HERACLES224G::wake_up(bool reset)
         // According to Heracles_Hardware_Design_V1.02, serial_port is active after 3s, but it seems to take over 5s
         // This URC does not appear when autobauding function is active. (AT+IPR=x)
         _at.lock();
-        _at.set_at_timeout(5s);
+        _at.set_at_timeout(POWER_ON_DURATION);
         _at.resp_start();
         _at.set_stop_tag("RDY");
         rdy = _at.consume_to_stop_tag();
